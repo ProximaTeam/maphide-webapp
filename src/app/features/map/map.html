@@ -1,0 +1,134 @@
+<div class="map-root">
+  <div class="top-bar">
+    <div class="logo">
+      <div class="logo-icon">🛡️</div>
+      <div class="logo-text">Map<span>Hide</span>.com</div>
+    </div>
+    <div class="actions">
+      <button class="secondary" (click)="toggleSatellite()">
+        {{ isSatellite ? 'Map' : 'Satellite' }}
+      </button>
+      <a routerLink="/auth/login">Sign In</a>
+      <a routerLink="/auth/register" class="primary">Register</a>
+    </div>
+  </div>
+
+  <div class="map-shell">
+    <div #mapContainer class="map-container"></div>
+    <canvas #gridCanvas class="grid-layer"></canvas>
+    <canvas #hoverCanvas class="hover-layer"></canvas>
+  </div>
+
+  <div class="info-panel">
+    <h4>Grid Status</h4>
+    <p>Zoom in to level 19+ to reveal the secure grid and interact with cells.</p>
+  </div>
+
+  <div class="help-panel">
+    <h4>How It Works</h4>
+    <ul>
+      <li>Zoom to level 19+ to reveal grid</li>
+      <li>Click any cell to store data</li>
+      <li>Protect with password encryption</li>
+      <li>Return to exact cell to retrieve</li>
+    </ul>
+  </div>
+
+  <!-- CREATE DROP MODAL -->
+  <div class="drop-modal-backdrop" *ngIf="dropModalOpen" (click)="closeDropModal()">
+    <div class="drop-modal" (click)="$event.stopPropagation()">
+      <div class="drop-modal-header">
+        <h2>Create Drop</h2>
+        <button class="close-btn" type="button" (click)="closeDropModal()">✕</button>
+      </div>
+
+      <div class="drop-modal-body">
+        <p class="coords" *ngIf="dropLat !== null && dropLng !== null">
+          Location:
+          <span>{{ dropLat | number:'1.5-5' }}, {{ dropLng | number:'1.5-5' }}</span>
+        </p>
+
+        <label class="field">
+          <span>Message</span>
+          <textarea [(ngModel)]="dropMessage" rows="4" placeholder="Enter your secret..."></textarea>
+        </label>
+
+        <label class="field checkbox">
+          <input type="checkbox" [(ngModel)]="dropPasswordLock" />
+          <span>Password protect this drop</span>
+        </label>
+
+        <label class="field" *ngIf="dropPasswordLock">
+          <span>Password</span>
+          <input type="password" [(ngModel)]="dropPassword" placeholder="Enter password" />
+        </label>
+
+        <label class="field checkbox">
+          <input type="checkbox" [(ngModel)]="dropHidden" />
+          <span>Hidden drop (not listed publicly)</span>
+        </label>
+
+        <p class="error" *ngIf="dropError">{{ dropError }}</p>
+      </div>
+
+      <div class="drop-modal-footer">
+        <button class="secondary" (click)="closeDropModal()">Cancel</button>
+        <button class="primary" [disabled]="dropSaving" (click)="saveDrop()">
+          {{ dropSaving ? 'Saving…' : 'Save Drop' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXISTING DROP MODAL -->
+  <div class="drop-modal-backdrop" *ngIf="existingModalOpen" (click)="closeExistingModal()">
+    <div class="drop-modal" (click)="$event.stopPropagation()">
+
+      <div class="drop-modal-header">
+        <h2>Drop Found</h2>
+        <button class="close-btn" type="button" (click)="closeExistingModal()">✕</button>
+      </div>
+
+      <div class="drop-modal-body">
+        <div *ngFor="let d of existingDrops" class="existing-drop">
+          <p><strong>Created:</strong> {{ d.createdAt | date:'medium' }}</p>
+
+          <!-- UNLOCKED -->
+          <div *ngIf="d.unlocked">
+            <h3>Decrypted Message</h3>
+            <pre>{{ d.decrypted }}</pre>
+          </div>
+
+          <!-- UNPROTECTED -->
+          <div *ngIf="!d.passwordLock && !d.unlocked">
+            <h3>Decrypt Message</h3>
+            <button (click)="decryptDrop(d)" [disabled]="decrypting">
+              {{ decrypting ? 'Decrypting…' : 'Decrypt' }}
+            </button>
+          </div>
+
+          <!-- PASSWORD LOCKED -->
+          <div *ngIf="d.passwordLock && !d.unlocked">
+            <h3>🔐 Password Required</h3>
+            <input
+              type="password"
+              [(ngModel)]="unlockPassword"
+              placeholder="Enter password"
+            />
+
+            <button (click)="decryptDrop(d)" [disabled]="decrypting">
+              {{ decrypting ? 'Decrypting…' : 'Unlock' }}
+            </button>
+
+            <p class="error" *ngIf="decryptError">{{ decryptError }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="drop-modal-footer">
+        <button class="secondary" (click)="closeExistingModal()">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>

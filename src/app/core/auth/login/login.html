@@ -1,0 +1,17 @@
+<form class="auth-form" (ngSubmit)="submit()">
+  <h1>Sign in to MapHide</h1>
+
+  <label>
+    <span>Username</span>
+    <input [(ngModel)]="username" name="username" required />
+  </label>
+
+  <label>
+    <span>Password</span>
+    <input [(ngModel)]="password" name="password" type="password" required />
+  </label>
+
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+
+  <button type="submit" [disabled]="loading()">Sign In</button>
+</form>

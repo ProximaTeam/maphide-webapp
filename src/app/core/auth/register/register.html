@@ -1,0 +1,32 @@
+<form class="auth-form" (ngSubmit)="submit()">
+  <h1>Create MapHide account</h1>
+
+  <label>
+    <span>Username</span>
+    <input [(ngModel)]="username" name="username" required />
+  </label>
+
+  <label>
+    <span>Email</span>
+    <input [(ngModel)]="email" name="email" type="email" required />
+  </label>
+
+  <label>
+    <span>Password</span>
+    <input [(ngModel)]="password" name="password" type="password" required />
+  </label>
+
+  <label>
+    <span>Confirm Password</span>
+    <input
+      [(ngModel)]="confirmPassword"
+      name="confirmPassword"
+      type="password"
+      required
+    />
+  </label>
+
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+
+  <button type="submit" [disabled]="loading()">Create Account</button>
+</form>
