@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  apiUrl: 'https://localhost:3050'
+  apiUrl: 'https://api.maphide.com'
 };
