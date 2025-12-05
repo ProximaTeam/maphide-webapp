@@ -2,5 +2,3 @@
 /dist
 /.angular
 /.vscode
-environment.prod.ts
-environment.ts
