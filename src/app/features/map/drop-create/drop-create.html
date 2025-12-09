@@ -1,0 +1,51 @@
+<div class="drop-modal-backdrop" (click)="close.emit()">
+  <div class="drop-modal" (click)="$event.stopPropagation()">
+
+    <div class="drop-modal-header">
+      <h2>Create Drop</h2>
+      <button class="close-btn" type="button" (click)="close.emit()">✕</button>
+    </div>
+
+    <div class="drop-modal-body">
+      <p class="coords">
+        Location:
+        <span>{{ lat | number:'1.5-5' }}, {{ lng | number:'1.5-5' }}</span>
+      </p>
+
+      <label class="field">
+        <span>Message</span>
+        <textarea
+          rows="4"
+          [(ngModel)]="message"
+          (ngModelChange)="message.set($event)"
+          placeholder="Enter your secret..."
+        ></textarea>
+      </label>
+
+      <label class="field checkbox">
+        <input type="checkbox" [(ngModel)]="passwordLock" (ngModelChange)="passwordLock.set($event)" />
+        <span>Password protect this drop</span>
+      </label>
+
+      <label class="field" *ngIf="passwordLock()">
+        <span>Password</span>
+        <input type="password" [(ngModel)]="password" (ngModelChange)="password.set($event)" />
+      </label>
+
+      <label class="field checkbox">
+        <input type="checkbox" [(ngModel)]="hidden" (ngModelChange)="hidden.set($event)" />
+        <span>Hidden drop</span>
+      </label>
+
+      <p class="error" *ngIf="error">{{ error }}</p>
+    </div>
+
+    <div class="drop-modal-footer">
+      <button type="button" class="secondary" (click)="close.emit()">Cancel</button>
+      <button type="button" class="primary" [disabled]="saving" (click)="submit()">
+        {{ saving ? 'Saving…' : 'Save Drop' }}
+      </button>
+    </div>
+
+  </div>
+</div>

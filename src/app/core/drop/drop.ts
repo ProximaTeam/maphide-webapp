@@ -1,7 +1,7 @@
 // src/app/core/services/drop.ts
 import { Injectable, inject } from '@angular/core';
-import { ApiService } from './api';
-import { CryptoService, EncryptedPayload } from './crypto';
+import { ApiService } from '../api/api';
+import { CryptoService, EncryptedPayload } from '../crypto/crypto';
 import { from, map, mergeMap, Observable } from 'rxjs';
 
 export interface VNewDrop {

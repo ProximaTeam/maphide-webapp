@@ -1,0 +1,54 @@
+<div class="drop-modal-backdrop" (click)="close.emit()">
+    <div class="drop-modal" (click)="$event.stopPropagation()">
+
+        <div class="drop-modal-header">
+            <h2>Drop Found</h2>
+            <button class="close-btn" type="button" (click)="close.emit()">✕</button>
+        </div>
+
+        <div class="drop-modal-body">
+            <ng-container *ngFor="let d of drops">
+                <div class="drop-item">
+
+                    <!-- 1️⃣ Unprotected & Locked (no password needed) -->
+                    <div *ngIf="!d.passwordLock && !d.unlocked">
+                        <p>Unprotected Drop</p>
+
+                        <button (click)="submitDecrypt(d)" [disabled]="decrypting">
+                            {{ decrypting ? 'Opening…' : 'Open' }}
+                        </button>
+
+                        <p class="error" *ngIf="error">{{ error }}</p>
+                    </div>
+
+                    <!-- 2️⃣ Password protected -->
+                    <div *ngIf="d.passwordLock && !d.unlocked">
+                        <p>🔐 Password Required</p>
+
+                        <input type="password" [(ngModel)]="password" (ngModelChange)="password.set($event)"
+                            placeholder="Password" />
+
+                        <button (click)="submitDecrypt(d)" [disabled]="decrypting">
+                            {{ decrypting ? 'Decrypting…' : 'Decrypt' }}
+                        </button>
+
+                        <p class="error" *ngIf="error">{{ error }}</p>
+                    </div>
+
+                    <!-- 3️⃣ Decrypted -->
+                    <div *ngIf="d.unlocked">
+                        <h3>Decrypted Message</h3>
+                        <pre>{{ d.decrypted }}</pre>
+                    </div>
+
+                </div>
+            </ng-container>
+
+        </div>
+
+        <div class="drop-modal-footer">
+            <button class="secondary" (click)="close.emit()">Close</button>
+        </div>
+
+    </div>
+</div>

@@ -11,21 +11,29 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { DropService } from '../../core/services/drop';
+import { DropService } from '../../core/drop/drop';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { CryptoService } from '../../core/services/crypto';
+import { CryptoService } from '../../core/crypto/crypto';
+import { DropCreate } from './drop-create/drop-create';
+import { DropView } from './drop-view/drop-view';
+import { MapDropHandler } from 'src/app/core/map/map-drop';
+import {
+  GRID_DEG_LAT,
+  GRID_DEG_LNG,
+  getCellCoords,
+  getCellBounds,
+  CellCoords
+} from '../../core/map/map-grid';
+import { MapEvents } from 'src/app/core/map/map-events';
+import { MapRenderer } from 'src/app/core/map/map-renderer';
 
-interface CellCoords {
-  x: number;
-  y: number;
-}
 
 declare const google: any;
 
 @Component({
   selector: 'app-map',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, DecimalPipe],
+  imports: [CommonModule, RouterLink, FormsModule, DecimalPipe, DropCreate, DropView],
   templateUrl: './map.html',
   styleUrl: './map.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,12 +49,13 @@ export class Map implements AfterViewInit {
   hoverCanvas!: ElementRef<HTMLCanvasElement>;
 
   private map!: google.maps.Map;
+  private dropHandler!: MapDropHandler;
+  private mapEvents!: MapEvents;
+  private renderer!: MapRenderer;
   private gridCtx!: CanvasRenderingContext2D;
   private hoverCtx!: CanvasRenderingContext2D;
 
   private readonly MIN_ZOOM_FOR_GRID = 19;
-  private readonly GRID_DEG_LAT = 0.000045;
-  private readonly GRID_DEG_LNG = 0.000055;
 
   private gridVisible = false;
   private hoveredCell: CellCoords | null = null;
@@ -76,7 +85,9 @@ export class Map implements AfterViewInit {
     private crypto: CryptoService,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone
-  ) {}
+  ) {
+    this.dropHandler = new MapDropHandler(dropService, crypto);
+  }
 
   ngAfterViewInit(): void {
     this.initMap();
@@ -105,32 +116,27 @@ export class Map implements AfterViewInit {
       mapTypeId: google.maps.MapTypeId.ROADMAP
     });
 
-    this.map.addListener('idle', () => this.drawGrid());
-
-    this.map.addListener('mousemove', (e: google.maps.MapMouseEvent) => {
-      if (!this.gridVisible || !e.latLng) {
-        this.hoveredCell = null;
-        this.clearHover();
-        return;
-      }
-
-      const newCell = this.getCellCoords(e.latLng.lat(), e.latLng.lng());
-      if (!this.hoveredCell || newCell.x !== this.hoveredCell.x || newCell.y !== this.hoveredCell.y) {
-        this.hoveredCell = newCell;
-        this.drawHoverCell();
-      }
+    this.map.addListener('idle', () => {
+      this.renderer.drawGrid(this.map, this.gridCanvas.nativeElement);
     });
 
-    // CLICK LOOKUP
-    this.map.addListener('click', (e: google.maps.MapMouseEvent) => {
-      if (!this.gridVisible || !e.latLng) return;
+    this.mapEvents = new MapEvents(
+      this.map,
 
-      this.ngZone.run(() => {
-        const lat = e.latLng!.lat();
-        const lng = e.latLng!.lng();
-        this.lookupDrop(lat, lng);
-      });
-    });
+      // CLICK
+      (coords, lat, lng) => {
+        this.ngZone.run(() => {
+          this.lookupDrop(lat, lng);
+        });
+      },
+
+      // HOVER
+      (coords) => {
+        this.hoveredCell = coords;
+        this.renderer.drawHoverCell(this.map, coords!, this.hoverCanvas.nativeElement);
+      }
+    );
+    this.mapEvents.bind();
 
     // OPTIONAL auto center geolocation
     if (navigator.geolocation) {
@@ -142,9 +148,13 @@ export class Map implements AfterViewInit {
           });
           this.map.setZoom(this.MIN_ZOOM_FOR_GRID);
         },
-        () => {}
+        () => { }
       );
     }
+
+    google.maps.event.addListenerOnce(this.map, 'tilesloaded', () => {
+      this.renderer.drawGrid(this.map, this.gridCanvas.nativeElement);
+    });
   }
 
   toggleSatellite() {
@@ -159,6 +169,7 @@ export class Map implements AfterViewInit {
   private initCanvases() {
     this.gridCtx = this.gridCanvas.nativeElement.getContext('2d')!;
     this.hoverCtx = this.hoverCanvas.nativeElement.getContext('2d')!;
+    this.renderer = new MapRenderer(this.gridCtx, this.hoverCtx);
   }
 
   private handleResize() {
@@ -167,7 +178,7 @@ export class Map implements AfterViewInit {
     this.gridCanvas.nativeElement.height = el.clientHeight;
     this.hoverCanvas.nativeElement.width = el.clientWidth;
     this.hoverCanvas.nativeElement.height = el.clientHeight;
-    this.drawGrid();
+    this.renderer.drawGrid(this.map, this.gridCanvas.nativeElement);
   }
 
   // ---------------------------------------------------------------------------
@@ -218,19 +229,19 @@ export class Map implements AfterViewInit {
       password: this.dropPassword,
       hidden: this.dropHidden
     })
-    .subscribe({
-      next: () => {
-        this.dropSaving = false;
-        this.dropModalOpen = false;
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        console.error(err);
-        this.dropSaving = false;
-        this.dropError = 'Failed to save drop';
-        this.cdr.markForCheck();
-      }
-    });
+      .subscribe({
+        next: () => {
+          this.dropSaving = false;
+          this.dropModalOpen = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error(err);
+          this.dropSaving = false;
+          this.dropError = 'Failed to save drop';
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   // ---------------------------------------------------------------------------
@@ -238,7 +249,7 @@ export class Map implements AfterViewInit {
   // ---------------------------------------------------------------------------
 
   lookupDrop(lat: number, lng: number) {
-    this.dropService.getDropAt(lat, lng).subscribe({
+    this.dropHandler.findDrop(lat, lng).subscribe({
       next: (drops: any[]) => {
         if (!drops || drops.length === 0) {
           this.openDropModal(lat, lng);
@@ -252,13 +263,13 @@ export class Map implements AfterViewInit {
         }
         this.cdr.markForCheck();
       },
-      error: (err) => {
-        console.error('Drop lookup failed:', err);
+      error: () => {
         this.openDropModal(lat, lng);
         this.cdr.markForCheck();
       }
     });
   }
+
 
   async decryptDrop(drop: any) {
     this.decrypting = true;
@@ -297,145 +308,57 @@ export class Map implements AfterViewInit {
     this.cdr.markForCheck();
   }
 
-  // ---------------------------------------------------------------------------
-  // GRID MATH & DRAWING (unchanged)
-  // ---------------------------------------------------------------------------
+  onCreateDrop(ev: {
+    message: string;
+    passwordLock: boolean;
+    password?: string;
+    hidden: boolean;
+  }) {
+    if (!this.dropLat || !this.dropLng) return;
 
-  private getCellCoords(lat: number, lng: number): CellCoords {
-    return {
-      x: Math.floor(lng / this.GRID_DEG_LNG),
-      y: Math.floor(lat / this.GRID_DEG_LAT)
-    };
+    this.dropSaving = true;
+    this.dropError = null;
+    this.cdr.markForCheck();
+
+    this.dropHandler.createDrop({
+      lat: this.dropLat,
+      lng: this.dropLng,
+      message: ev.message,
+      passwordLock: ev.passwordLock,
+      password: ev.password,
+      hidden: ev.hidden
+    })
+      .subscribe({
+        next: () => {
+          this.dropSaving = false;
+          this.dropModalOpen = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.dropSaving = false;
+          this.dropError = 'Failed to save drop';
+          this.cdr.markForCheck();
+        }
+      });
   }
 
-  private getCellBoundsFromCoords(x: number, y: number) {
-    return {
-      south: y * this.GRID_DEG_LAT,
-      north: (y + 1) * this.GRID_DEG_LAT,
-      west: x * this.GRID_DEG_LNG,
-      east: (x + 1) * this.GRID_DEG_LNG
-    };
-  }
 
-  private latLngToPixel(
-    lat: number,
-    lng: number,
-    projection: google.maps.Projection,
-    centerWorld: google.maps.Point,
-    scale: number,
-    cw: number,
-    ch: number
-  ) {
-    const world = projection.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
-    if (!world) return { x: -9999, y: -9999 };
+  onDecryptDrop(ev: { drop: any; password: string }) {
+    this.decrypting = true;
+    this.decryptError = null;
+    this.cdr.markForCheck();
 
-    return {
-      x: (world.x - centerWorld.x) * scale + cw / 2,
-      y: (world.y - centerWorld.y) * scale + ch / 2
-    };
-  }
-
-  private drawGrid() {
-    const canvas = this.gridCanvas.nativeElement;
-    const ctx = this.gridCtx;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (!this.map) return;
-
-    const zoom = this.map.getZoom() ?? 0;
-    this.gridVisible = zoom >= this.MIN_ZOOM_FOR_GRID;
-    if (!this.gridVisible) {
-      this.clearHover();
-      return;
-    }
-
-    const bounds = this.map.getBounds();
-    const projection = this.map.getProjection();
-    const center = this.map.getCenter();
-    if (!bounds || !projection || !center) return;
-
-    const centerWorld = projection.fromLatLngToPoint(center);
-    if (!centerWorld) return;
-
-    const scale = Math.pow(2, zoom);
-
-    const ne = bounds.getNorthEast();
-    const sw = bounds.getSouthWest();
-    const north = ne.lat();
-    const east = ne.lng();
-    const south = sw.lat();
-    const west = sw.lng();
-
-    const startX = Math.floor(west / this.GRID_DEG_LNG) - 1;
-    const endX = Math.ceil(east / this.GRID_DEG_LNG) + 1;
-    const startY = Math.floor(south / this.GRID_DEG_LAT) - 1;
-    const endY = Math.ceil(north / this.GRID_DEG_LAT) + 1;
-
-    ctx.strokeStyle = 'rgba(14, 165, 233, 0.75)';
-    ctx.lineWidth = 1;
-
-    // verticals
-    for (let x = startX; x <= endX; x++) {
-      const lng = x * this.GRID_DEG_LNG;
-
-      const a = this.latLngToPixel(north, lng, projection, centerWorld, scale, canvas.width, canvas.height);
-      const b = this.latLngToPixel(south, lng, projection, centerWorld, scale, canvas.width, canvas.height);
-
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-
-    // horizontals
-    for (let y = startY; y <= endY; y++) {
-      const lat = y * this.GRID_DEG_LAT;
-
-      const a = this.latLngToPixel(lat, west, projection, centerWorld, scale, canvas.width, canvas.height);
-      const b = this.latLngToPixel(lat, east, projection, centerWorld, scale, canvas.width, canvas.height);
-
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-
-    this.drawHoverCell();
-  }
-
-  private clearHover() {
-    const canvas = this.hoverCanvas.nativeElement;
-    this.hoverCtx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-
-  private drawHoverCell() {
-    const canvas = this.hoverCanvas.nativeElement;
-    const ctx = this.hoverCtx;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!this.gridVisible || !this.hoveredCell || !this.map) return;
-
-    const projection = this.map.getProjection();
-    const center = this.map.getCenter();
-    if (!projection || !center) return;
-
-    const centerWorld = projection.fromLatLngToPoint(center);
-    if (!centerWorld) return;
-
-    const scale = Math.pow(2, this.map.getZoom()!);
-
-    const bounds = this.getCellBoundsFromCoords(this.hoveredCell.x, this.hoveredCell.y);
-    const nw = this.latLngToPixel(bounds.north, bounds.west, projection, centerWorld, scale, canvas.width, canvas.height);
-    const se = this.latLngToPixel(bounds.south, bounds.east, projection, centerWorld, scale, canvas.width, canvas.height);
-
-    const w = se.x - nw.x;
-    const h = se.y - nw.y;
-
-    ctx.fillStyle = 'rgba(14, 165, 233, 0.25)';
-    ctx.fillRect(nw.x, nw.y, w, h);
-
-    ctx.strokeStyle = 'rgba(14, 165, 233, 1)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(nw.x, nw.y, w, h);
+    this.dropHandler.decrypt(ev.drop, ev.password)
+      .then(plaintext => {
+        ev.drop.unlocked = true;
+        ev.drop.decrypted = plaintext;
+        this.decrypting = false;
+        this.cdr.markForCheck();
+      })
+      .catch(() => {
+        this.decryptError = 'Incorrect password';
+        this.decrypting = false;
+        this.cdr.markForCheck();
+      });
   }
 }

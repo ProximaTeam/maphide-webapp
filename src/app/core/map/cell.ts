@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { ApiService } from './api';
+import { ApiService } from '../api/api';
 import { Observable } from 'rxjs';
 
 export interface CellCoords {

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth';
+import { AuthService } from '../../../core/auth/auth';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -16,7 +16,6 @@ export class Register {
   private auth = inject(AuthService);
   private router = inject(Router);
 
-  username = '';
   email = '';
   password = '';
   confirmPassword = '';
@@ -24,7 +23,7 @@ export class Register {
   error = signal<string | null>(null);
 
   submit() {
-    if (!this.username || !this.email || !this.password || !this.confirmPassword) {
+    if (!this.email || !this.password || !this.confirmPassword) {
       this.error.set('Please fill in all fields');
       return;
     }
@@ -36,10 +35,10 @@ export class Register {
     this.loading.set(true);
     this.error.set(null);
 
-    this.auth.register(this.username, this.email, this.password).subscribe({
+    this.auth.register(this.email, this.password).subscribe({
       next: () => {
         this.loading.set(false);
-        this.router.navigateByUrl('/');
+        this.router.navigateByUrl('/auth/confirm-email');
       },
       error: (err) => {
         console.error(err);

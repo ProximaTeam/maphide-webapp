@@ -11,6 +11,13 @@ export const routes: Routes = [
     loadChildren: () =>
       import('./core/auth/auth.routes').then((m) => m.AUTH_ROUTES)
   },
+
+  {
+    path: 'auth/confirm-email',
+    loadComponent: () =>
+      import('./features/auth/confirm-email/confirm-email')
+        .then(m => m.ConfirmEmailComponent)
+  },
   {
     path: '**',
     redirectTo: ''
