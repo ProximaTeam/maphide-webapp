@@ -6,6 +6,7 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  inject,
   NgZone,
   ViewChild
 } from '@angular/core';
@@ -26,6 +27,7 @@ import {
 } from '../../core/map/map-grid';
 import { MapEvents } from 'src/app/core/map/map-events';
 import { MapRenderer } from 'src/app/core/map/map-renderer';
+import { UserStore } from 'src/app/core/auth/user.store';
 
 
 declare const google: any;
@@ -48,6 +50,10 @@ export class Map implements AfterViewInit {
   @ViewChild('hoverCanvas', { static: true })
   hoverCanvas!: ElementRef<HTMLCanvasElement>;
 
+  @ViewChild('eventLayer', { static: true })
+  eventLayer!: ElementRef<HTMLDivElement>;
+
+  userStore = inject(UserStore);
   private map!: google.maps.Map;
   private dropHandler!: MapDropHandler;
   private mapEvents!: MapEvents;
@@ -68,6 +74,8 @@ export class Map implements AfterViewInit {
   dropLng: number | null = null;
   dropMessage = '';
   dropPasswordLock = false;
+  dropOtcLock = false;
+  dropGpsLock = false;
   dropPassword = '';
   dropHidden = false;
   dropSaving = false;
@@ -79,6 +87,9 @@ export class Map implements AfterViewInit {
   unlockPassword = '';
   decrypting = false;
   decryptError: string | null = null;
+
+  isLoggedIn = this.userStore.isLoggedIn;
+  user = this.userStore.user;
 
   constructor(
     private dropService: DropService,
@@ -116,27 +127,47 @@ export class Map implements AfterViewInit {
       mapTypeId: google.maps.MapTypeId.ROADMAP
     });
 
-    this.map.addListener('idle', () => {
+    this.map.addListener("bounds_changed", () => {
+      // smooth grid movement during drag
       this.renderer.drawGrid(this.map, this.gridCanvas.nativeElement);
     });
 
-    this.mapEvents = new MapEvents(
-      this.map,
+    this.map.addListener("zoom_changed", () => this.renderer.drawGrid(this.map, this.gridCanvas.nativeElement));
 
-      // CLICK
-      (coords, lat, lng) => {
+    // Draw when dragging stops
+    this.map.addListener("dragend", () => this.renderer.drawGrid(this.map, this.gridCanvas.nativeElement));
+
+    // NEVER DRAW WHILE DRAGGING
+    this.map.addListener("dragstart", () => {
+      this.hoveredCell = null;
+      this.renderer.clearHover(this.hoverCanvas.nativeElement);
+    });
+
+    this.mapEvents = new MapEvents(
+      this.eventLayer.nativeElement,  // 1️⃣ eventEl
+      this.map,                       // 2️⃣ map
+
+      // 3️⃣ CLICK CALLBACK (coords, lat, lng)
+      (coords: CellCoords, lat: number, lng: number) => {
         this.ngZone.run(() => {
           this.lookupDrop(lat, lng);
         });
       },
 
-      // HOVER
-      (coords) => {
+      // 4️⃣ HOVER CALLBACK (coords or null)
+      (coords: CellCoords | null) => {
         this.hoveredCell = coords;
-        this.renderer.drawHoverCell(this.map, coords!, this.hoverCanvas.nativeElement);
+        if (coords) {
+          this.renderer.drawHoverCell(this.map, coords, this.hoverCanvas.nativeElement);
+        } else {
+          this.renderer.clearHover(this.hoverCanvas.nativeElement);
+        }
       }
     );
+
+
     this.mapEvents.bind();
+
 
     // OPTIONAL auto center geolocation
     if (navigator.geolocation) {
@@ -227,7 +258,9 @@ export class Map implements AfterViewInit {
       message: this.dropMessage.trim(),
       passwordLock: this.dropPasswordLock,
       password: this.dropPassword,
-      hidden: this.dropHidden
+      hidden: this.dropHidden,
+      otcLock: this.dropOtcLock,
+      gpsLock: this.dropGpsLock
     })
       .subscribe({
         next: () => {
@@ -313,6 +346,8 @@ export class Map implements AfterViewInit {
     passwordLock: boolean;
     password?: string;
     hidden: boolean;
+    otcLock: boolean;
+    gpsLock: boolean;
   }) {
     if (!this.dropLat || !this.dropLng) return;
 
@@ -326,7 +361,9 @@ export class Map implements AfterViewInit {
       message: ev.message,
       passwordLock: ev.passwordLock,
       password: ev.password,
-      hidden: ev.hidden
+      hidden: ev.hidden,
+      otcLock: ev.otcLock,
+      gpsLock: ev.gpsLock
     })
       .subscribe({
         next: () => {
@@ -343,22 +380,141 @@ export class Map implements AfterViewInit {
   }
 
 
-  onDecryptDrop(ev: { drop: any; password: string }) {
-    this.decrypting = true;
+  onUnlockDrop(ev: {
+    drop: any;
+    password?: string;
+    otc?: number;
+    requireGps: boolean;
+    generateOtc?: boolean;
+  }) {
+    const d = ev.drop;
+
     this.decryptError = null;
     this.cdr.markForCheck();
 
-    this.dropHandler.decrypt(ev.drop, ev.password)
-      .then(plaintext => {
-        ev.drop.unlocked = true;
-        ev.drop.decrypted = plaintext;
-        this.decrypting = false;
+    // Helper: only for password decrypt (0-knowledge)
+    const performDecrypt = () => {
+      this.decrypting = true;
+      this.cdr.markForCheck();
+
+      this.dropHandler.decrypt(d, ev.password ?? '')
+        .then(text => {
+          d.unlocked = true;
+          d.decrypted = text;
+          this.decrypting = false;
+          this.cdr.markForCheck();
+        })
+        .catch(() => {
+          this.decryptError = 'Incorrect password';
+          this.decrypting = false;
+          this.cdr.markForCheck();
+        });
+    };
+
+    // ---------------------------------------------------------------------------
+    // 1) GENERATE OTC
+    // ---------------------------------------------------------------------------
+
+    if (ev.generateOtc) {
+      this.decrypting = true;
+      this.cdr.markForCheck();
+
+      this.dropService.generateOtc(d._id).subscribe({
+        next: (res: any) => {
+          d.otcGenerated = true;
+          d.generatedOtc = res.code; // backend emails it
+          this.decrypting = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.decryptError = 'Could not generate code';
+          this.decrypting = false;
+          this.cdr.markForCheck();
+        }
+      });
+      return;
+    }
+
+    // ---------------------------------------------------------------------------
+    // 2) PASSWORD-ONLY DROP
+    // ---------------------------------------------------------------------------
+
+    if (d.passwordLock && !d.otcLock && !d.gpsLock) {
+      return performDecrypt();
+    }
+
+    // ---------------------------------------------------------------------------
+    // 3) OTC REQUIRED
+    // ---------------------------------------------------------------------------
+
+    const verifyOtc = (): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        if (!d.otcLock) return resolve();
+
+        if (!ev.otc) {
+          this.decryptError = 'One-time code required';
+          return reject();
+        }
+
+        this.decrypting = true;
         this.cdr.markForCheck();
-      })
+
+        this.dropService.checkOtc(d._id, ev.otc!).subscribe({
+          next: () => resolve(),
+          error: () => {
+            this.decryptError = 'Invalid one-time code';
+            this.decrypting = false;
+            this.cdr.markForCheck();
+            reject();
+          }
+        });
+      });
+    };
+
+    // ---------------------------------------------------------------------------
+    // 4) GPS REQUIRED
+    // ---------------------------------------------------------------------------
+
+    const verifyGps = (): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        if (!d.gpsLock) return resolve();
+
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            this.decrypting = true;
+            this.cdr.markForCheck();
+            this.dropService.checkGps(
+              d._id,
+              pos.coords.latitude,
+              pos.coords.longitude
+            ).subscribe({
+              next: () => resolve(),
+              error: () => {
+                this.decryptError = 'GPS location incorrect';
+                this.decrypting = false;
+                this.cdr.markForCheck();
+                reject();
+              }
+            });
+          },
+          () => {
+            this.decryptError = 'GPS permission denied';
+            reject();
+          }
+        );
+      });
+    };
+
+    // ---------------------------------------------------------------------------
+    // 5) FULL MULTI-LOCK FLOW (OTC → GPS → decrypt)
+    // ---------------------------------------------------------------------------
+
+    verifyOtc()
+      .then(() => verifyGps())
+      .then(() => performDecrypt())
       .catch(() => {
-        this.decryptError = 'Incorrect password';
-        this.decrypting = false;
-        this.cdr.markForCheck();
+        // errors already handled above
       });
   }
+
 }

@@ -8,6 +8,14 @@
   overflow: hidden;
 }
 
+.event-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3; // above hover canvas
+  pointer-events: auto;
+  background: transparent;
+}
+
 /* MAP + CANVASES ----------------------------------------------------------- */
 
 .map-shell {
@@ -31,8 +39,16 @@
   pointer-events: none;
 }
 
-.grid-layer { z-index: 1; }  // draw under hover
-.hover-layer { z-index: 2; } // highlight on top
+.grid-layer {
+  z-index: 1;
+}
+
+// draw under hover
+.hover-layer {
+  z-index: 2;
+}
+
+// highlight on top
 
 
 /* TOP BAR ------------------------------------------------------------------ */
@@ -54,7 +70,7 @@
   justify-content: space-between;
   padding: 0 20px;
 
-  z-index: 2000;       // always above map + canvases
+  z-index: 2000; // always above map + canvases
   pointer-events: auto;
 }
 
@@ -86,6 +102,12 @@
 .actions {
   display: flex;
   gap: 10px;
+
+  .welcome {
+    color: var(--text-primary);
+    font-size: 13px;
+    padding: 8px 6px;
+  }
 
   a,
   button {
@@ -126,12 +148,19 @@
   color: var(--text-secondary);
   font-size: 13px;
 
-  z-index: 1500;   // above canvases, below modal
+  z-index: 1500; // above canvases, below modal
   pointer-events: auto;
 }
 
-.info-panel { left: 20px; max-width: 280px; }
-.help-panel { right: 20px; max-width: 260px; }
+.info-panel {
+  left: 20px;
+  max-width: 280px;
+}
+
+.help-panel {
+  right: 20px;
+  max-width: 260px;
+}
 
 .help-panel h4 {
   margin: 0 0 8px 0;
@@ -142,10 +171,13 @@
 }
 
 .help-panel ul {
-  margin: 0; padding: 0;
+  margin: 0;
+  padding: 0;
   list-style: none;
 
-  li { padding: 4px 0; }
+  li {
+    padding: 4px 0;
+  }
 }
 
 
@@ -160,7 +192,7 @@
   align-items: center;
   justify-content: center;
 
-  z-index: 3000;   // highest layer
+  z-index: 3000; // highest layer
 }
 
 .drop-modal {
@@ -220,7 +252,10 @@
     gap: 6px;
     margin-bottom: 12px;
 
-    span { font-size: 13px; color: var(--text-secondary); }
+    span {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
 
     textarea,
     input[type='password'] {
@@ -239,7 +274,9 @@
     align-items: center;
     gap: 8px;
 
-    span { font-size: 13px; }
+    span {
+      font-size: 13px;
+    }
   }
 
   .error {

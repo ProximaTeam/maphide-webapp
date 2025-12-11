@@ -18,6 +18,8 @@ export class MapDropHandler {
     passwordLock: boolean;
     password?: string;
     hidden: boolean;
+    otcLock: boolean;
+    gpsLock: boolean;
   }) {
     return this.dropService.createDrop(data);
   }

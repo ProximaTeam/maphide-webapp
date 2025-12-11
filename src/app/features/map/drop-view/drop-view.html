@@ -7,38 +7,96 @@
         </div>
 
         <div class="drop-modal-body">
+
             <ng-container *ngFor="let d of drops">
                 <div class="drop-item">
 
-                    <!-- 1️⃣ Unprotected & Locked (no password needed) -->
-                    <div *ngIf="!d.passwordLock && !d.unlocked">
-                        <p>Unprotected Drop</p>
+                    <!-- METADATA -->
+                    <div class="section meta">
+                        <p><span>Created:</span> {{ d.createdAt | date:'medium' }}</p>
+                        <p><span>Location:</span> {{ d.location.coordinates[0] | number:'1.5-5' }}, {{
+                            d.location.coordinates[1] | number:'1.5-5' }}</p>
+                    </div>
 
-                        <button (click)="submitDecrypt(d)" [disabled]="decrypting">
-                            {{ decrypting ? 'Opening…' : 'Open' }}
+
+                    <!-- PASSWORD LOCK -->
+                    <div *ngIf="d.passwordLock && !d.unlocked" class="section">
+                        <p class="section-title">Password Required</p>
+
+                        <label class="field">
+                            <span>Password</span>
+                            <input type="password" [(ngModel)]="password" (ngModelChange)="password.set($event)"
+                                placeholder="Enter password" />
+                        </label>
+                    </div>
+
+
+                    <!-- 🔐 OTC LOCK -->
+                    <div *ngIf="d.otcLock && !d.unlocked" class="section otc-section">
+
+                        <p class="section-title">One-Time Code Verification</p>
+
+                        <!-- BEFORE GENERATION -->
+                        <div *ngIf="!d.otcGenerated" class="otc-step">
+                            <p class="hint">
+                                This drop requires a one-time unlock code.
+                                Press the button below to generate the code — it will be sent to your email.
+                            </p>
+
+                            <button class="dark-btn full" (click)="generateOtc(d)" [disabled]="otcGenerating()">
+                                {{ otcGenerating() ? 'Generating…' : 'Generate One-Time Code' }}
+                            </button>
+
+                            <p class="error" *ngIf="error">{{ error }}</p>
+                        </div>
+
+                        <!-- AFTER GENERATION -->
+                        <div *ngIf="d.otcGenerated" class="otc-step generated">
+
+                            <label class="field">
+                                <span>Enter the 4-digit code</span>
+                                <input type="number" maxlength="4" class="otc-input" [(ngModel)]="otc"
+                                    placeholder="1234" />
+                            </label>
+
+                            <button class="dark-btn full" (click)="submitOtc(d)" [disabled]="otcVerifying()">
+                                {{ otcVerifying() ? 'Verifying…' : 'Unlock' }}
+                            </button>
+
+                            <p class="error" *ngIf="error">{{ error }}</p>
+
+                            <p class="info-code">
+                                <strong>Code sent:</strong> {{ d.generatedOtc }}
+                            </p>
+                        </div>
+
+                    </div>
+
+
+
+
+                    <!-- GPS LOCK -->
+                    <div *ngIf="d.gpsLock && !d.unlocked" class="section">
+                        <p class="section-title">GPS Verification</p>
+                        <p class="hint">You must physically be near the drop location.</p>
+                    </div>
+
+
+                    <!-- MASTER UNLOCK BUTTON -->
+                    <div *ngIf="!d.unlocked" class="section">
+                        <button class="primary-btn" (click)="submitDecrypt(d)" [disabled]="decrypting">
+                            {{ decrypting ? 'Unlocking…' : 'Unlock Drop' }}
                         </button>
+
 
                         <p class="error" *ngIf="error">{{ error }}</p>
                     </div>
 
-                    <!-- 2️⃣ Password protected -->
-                    <div *ngIf="d.passwordLock && !d.unlocked">
-                        <p>🔐 Password Required</p>
 
-                        <input type="password" [(ngModel)]="password" (ngModelChange)="password.set($event)"
-                            placeholder="Password" />
-
-                        <button (click)="submitDecrypt(d)" [disabled]="decrypting">
-                            {{ decrypting ? 'Decrypting…' : 'Decrypt' }}
-                        </button>
-
-                        <p class="error" *ngIf="error">{{ error }}</p>
-                    </div>
-
-                    <!-- 3️⃣ Decrypted -->
-                    <div *ngIf="d.unlocked">
-                        <h3>Decrypted Message</h3>
-                        <pre>{{ d.decrypted }}</pre>
+                    <!-- DECRYPTED MESSAGE -->
+                    <div *ngIf="d.unlocked" class="section">
+                        <p class="section-title">Decrypted Message</p>
+                        <pre class="message-box">{{ d.decrypted }}</pre>
                     </div>
 
                 </div>

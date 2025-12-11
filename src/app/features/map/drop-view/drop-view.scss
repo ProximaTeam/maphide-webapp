@@ -1,4 +1,3 @@
-/* === GLOBAL MODAL LAYOUT === */
 .drop-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -13,52 +12,61 @@
 .drop-modal {
   width: 100%;
   max-width: 420px;
-
   background: #0b1120;
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.8);
-
+  border: 1px solid rgba(148,163,184,0.3);
+  box-shadow: 0 24px 60px rgba(15,23,42,0.8);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
-/* HEADER */
 .drop-modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(15,23,42,1);
   display: flex;
   justify-content: space-between;
   align-items: center;
 
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(15, 23, 42, 1);
-
   h2 {
     margin: 0;
-    font-size: 16px;
     color: var(--text-primary);
+    font-size: 16px;
   }
 
   .close-btn {
-    border: none;
     background: transparent;
+    border: none;
     color: var(--text-secondary);
     font-size: 18px;
     cursor: pointer;
   }
 }
 
-/* BODY */
 .drop-modal-body {
-  padding: 16px 20px;
+  padding: 20px;
 
-  .coords {
-    margin-bottom: 12px;
+  .section {
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(15,23,42,0.8);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .section-title {
+    color: var(--accent-primary);
+    font-size: 14px;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .meta p {
     font-size: 12px;
     color: var(--text-secondary);
 
     span {
-      font-family: 'JetBrains Mono', monospace;
       color: var(--accent-primary);
     }
   }
@@ -67,65 +75,139 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin-bottom: 12px;
 
     span {
-      font-size: 13px;
       color: var(--text-secondary);
+      font-size: 13px;
     }
 
-    textarea,
-    input[type="password"],
-    input[type="text"] {
+    input {
       background: #020617;
       border-radius: 8px;
-      border: 1px solid rgba(30, 64, 175, 0.7);
       padding: 8px 10px;
+      border: 1px solid rgba(30,64,175,0.7);
       color: var(--text-primary);
-      font-size: 14px;
-      resize: vertical;
     }
   }
 
-  .checkbox {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
+  .hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 4px 0 10px;
+  }
 
-    span {
-      font-size: 13px;
-    }
+  .primary-btn {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+    color: white;
+    font-weight: 600;
   }
 
   .error {
-    margin-top: 8px;
-    font-size: 12px;
     color: #f97373;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  .message-box {
+    background: #020617;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid rgba(30,64,175,0.7);
+    white-space: pre-wrap;
+    font-family: "JetBrains Mono", monospace;
   }
 }
 
-/* FOOTER */
 .drop-modal-footer {
   padding: 12px 20px 16px;
-  border-top: 1px solid rgba(15, 23, 42, 1);
-
+  border-top: 1px solid rgba(15,23,42,1);
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
 
-  button {
+  .secondary {
     padding: 8px 16px;
-    font-size: 13px;
     border-radius: 8px;
-    cursor: pointer;
-    border: 1px solid rgba(148, 163, 184, 0.5);
+    border: 1px solid rgba(148,163,184,0.5);
     background: transparent;
     color: var(--text-primary);
+    cursor: pointer;
+  }
+}
+
+/* OTC SECTION -------------------------------------------------------- */
+
+.otc-section {
+  .hint {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 12px;
+    line-height: 1.4;
   }
 
-  .primary {
-    background: linear-gradient(135deg, #0ea5e9, #06b6d4);
-    border-color: transparent;
-    color: white;
+  .otc-step {
+    padding: 8px 0;
+
+    &.generated {
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      margin-top: 12px;
+      padding-top: 16px;
+    }
+  }
+
+  .otc-input {
+    background: #020617;
+    border-radius: 8px;
+    border: 1px solid rgba(30, 64, 175, 0.7);
+    padding: 10px;
+    font-size: 18px;
+    letter-spacing: 4px;
+    text-align: center;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    width: 100%;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.25);
+    }
+  }
+
+  .info-code {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--accent-primary);
+    opacity: 0.85;
+
+    strong {
+      color: var(--accent-primary);
+    }
+  }
+}
+
+/* Button consistency ------------------------------------------------ */
+
+.dark-btn.full {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(78, 93, 120, 0.5);
+  background: rgba(20, 30, 45, 0.9);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+
+  &:hover {
+    background: rgba(30, 45, 65, 0.95);
+    border-color: rgba(148, 163, 184, 0.4);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }

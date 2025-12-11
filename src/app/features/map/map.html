@@ -8,12 +8,22 @@
       <button class="secondary" (click)="toggleSatellite()">
         {{ isSatellite ? 'Map' : 'Satellite' }}
       </button>
-      <a routerLink="/auth/login">Sign In</a>
-      <a routerLink="/auth/register" class="primary">Register</a>
+
+      <!-- Not logged in -->
+      <ng-container *ngIf="!isLoggedIn()">
+        <a routerLink="/auth/login">Sign In</a>
+        <a routerLink="/auth/register" class="primary">Register</a>
+      </ng-container>
+
+      <!-- Logged in -->
+      <ng-container *ngIf="isLoggedIn()">
+        <span class="welcome">Hi, {{ user()?.email }}</span>
+        <button class="secondary" (click)="userStore.logout()">Logout</button>
+      </ng-container>
     </div>
   </div>
 
-  <div class="map-shell">
+  <div #eventLayer class="map-shell">
     <div #mapContainer class="map-container"></div>
     <canvas #gridCanvas class="grid-layer"></canvas>
     <canvas #hoverCanvas class="hover-layer"></canvas>
@@ -41,6 +51,6 @@
 
   <!-- EXISTING DROP MODAL (New Component) -->
   <mh-drop-view *ngIf="existingModalOpen" [drops]="existingDrops" [decrypting]="decrypting" [error]="decryptError"
-    (close)="closeExistingModal()" (decrypt)="onDecryptDrop($event)"></mh-drop-view>
+    (close)="closeExistingModal()" (decrypt)="onUnlockDrop($event)"></mh-drop-view>
 
 </div>

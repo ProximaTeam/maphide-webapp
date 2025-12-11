@@ -1,7 +1,9 @@
-<div class="auth-wrapper">
-  <h2>Confirm Your Email</h2>
+<div class="auth-form confirm-email-form">
+  <h1>Confirm Your Email</h1>
 
-  <p>Please enter the 6-digit code sent to your email.</p>
+  <p class="description">
+    Please enter the 4-digit code sent to your email.
+  </p>
 
   <input
     type="text"
@@ -9,10 +11,10 @@
     placeholder="Enter confirmation code"
   />
 
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+  <p class="success" *ngIf="success()">Email confirmed successfully!</p>
+
   <button (click)="submit()" [disabled]="loading()">
     {{ loading() ? 'Confirming…' : 'Confirm Email' }}
   </button>
-
-  <p class="error" *ngIf="error()">{{ error() }}</p>
-  <p class="success" *ngIf="success()">Email confirmed successfully!</p>
 </div>

@@ -37,6 +37,8 @@ export class DropService {
         lng: number;
         message: string;
         passwordLock: boolean;
+        otcLock: boolean;
+        gpsLock: boolean;
         password?: string;
         hidden: boolean;
     }): Observable<any> {
@@ -59,8 +61,8 @@ export class DropService {
                     lng: params.lng,
                     passwordLock: params.passwordLock,
                     password: params.passwordLock ? params.password : undefined,
-                    otcLock: false,
-                    gpsLock: false,
+                    otcLock: params.otcLock,
+                    gpsLock: params.gpsLock,
                     hidden: params.hidden,
                     premiumUser: false
                 };
@@ -77,6 +79,20 @@ export class DropService {
         return this.api.get<any[]>(`/drop/at?lat=${lat}&lng=${lng}`);
     }
 
+    checkOtc(id: string, code: number) {
+        console.log("checkOtc");
+        return this.api.post(`/drop/check-otc/${id}`, { oneTimeCode: code });
+    }
+
+    // Verify GPS
+    checkGps(id: string, lat: number, lng: number) {
+        return this.api.post(`/drop/check-gps/${id}`, { lat, lng });
+    }
+
+    // Request a new OTC code
+    generateOtc(id: string) {
+        return this.api.get(`/drop/get-otc/${id}`);
+    }
 
     /**
      * Optional: Retrieve encrypted content for a specific drop by id.
