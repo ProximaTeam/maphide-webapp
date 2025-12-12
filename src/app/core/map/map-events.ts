@@ -9,6 +9,9 @@ export class MapEvents {
   private dragMoved = false;
   private readonly DRAG_THRESHOLD = 5; // px
 
+  private touchStart: { x: number; y: number } | null = null;
+  private touchMoved = false;
+
   constructor(
     private el: HTMLElement,
     private map: google.maps.Map,
@@ -18,53 +21,35 @@ export class MapEvents {
   ) {}
 
   bind() {
-    // MOUSE DOWN -------------------------------------------------------------
+    // ---------------------------------------------------------------
+    // MOUSE EVENTS
+    // ---------------------------------------------------------------
+
     this.el.addEventListener('mousedown', (e) => {
       this.isMouseDown = true;
       this.dragStart = { x: e.clientX, y: e.clientY };
       this.dragMoved = false;
 
-      // clear hover immediately when starting drag
       this.onHoverCell(null);
       this.hovered = null;
     });
 
-    // MOUSE MOVE -------------------------------------------------------------
     this.el.addEventListener('mousemove', (e) => {
-      // If mouse is held, track drag distance, but DO NOT hover
       if (this.isMouseDown) {
         if (this.dragStart) {
           const dx = e.clientX - this.dragStart.x;
           const dy = e.clientY - this.dragStart.y;
-          const distSq = dx * dx + dy * dy;
-          if (distSq > this.DRAG_THRESHOLD * this.DRAG_THRESHOLD) {
+
+          if (dx * dx + dy * dy > this.DRAG_THRESHOLD * this.DRAG_THRESHOLD) {
             this.dragMoved = true;
           }
         }
-        // no hover while dragging
         return;
       }
 
-      // Not dragging → normal hover logic
-      if (!this.map || this.map.getZoom()! < this.MIN_ZOOM) {
-        this.onHoverCell(null);
-        this.hovered = null;
-        return;
-      }
-
-      const latLng = this.screenToLatLng({ x: e.clientX, y: e.clientY });
-      if (!latLng) {
-        this.onHoverCell(null);
-        this.hovered = null;
-        return;
-      }
-
-      const coords = getCellCoords(latLng.lat(), latLng.lng());
-      this.hovered = coords;
-      this.onHoverCell(coords);
+      this.handleHover(e.clientX, e.clientY);
     });
 
-    // MOUSE UP ---------------------------------------------------------------
     this.el.addEventListener('mouseup', (e) => {
       const wasDrag = this.dragMoved;
 
@@ -72,24 +57,11 @@ export class MapEvents {
       this.dragStart = null;
       this.dragMoved = false;
 
-      // If it was a drag → don't treat as click
-      if (wasDrag) {
-        return;
+      if (!wasDrag) {
+        this.handleClick(e.clientX, e.clientY);
       }
-
-      // Treat as click (but only if zoomed in enough)
-      if (!this.map || this.map.getZoom()! < this.MIN_ZOOM) {
-        return;
-      }
-
-      const latLng = this.screenToLatLng({ x: e.clientX, y: e.clientY });
-      if (!latLng) return;
-
-      const coords = getCellCoords(latLng.lat(), latLng.lng());
-      this.onCellClick(coords, latLng.lat(), latLng.lng());
     });
 
-    // MOUSE LEAVE ------------------------------------------------------------
     this.el.addEventListener('mouseleave', () => {
       this.isMouseDown = false;
       this.dragStart = null;
@@ -97,6 +69,80 @@ export class MapEvents {
       this.hovered = null;
       this.onHoverCell(null);
     });
+
+    // ---------------------------------------------------------------
+    // TOUCH EVENTS (Mobile)
+    // ---------------------------------------------------------------
+
+    this.el.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      this.touchStart = { x: t.clientX, y: t.clientY };
+      this.touchMoved = false;
+
+      this.onHoverCell(null);
+      this.hovered = null;
+    });
+
+    this.el.addEventListener('touchmove', (e) => {
+      if (!this.touchStart) return;
+
+      const t = e.touches[0];
+      const dx = t.clientX - this.touchStart.x;
+      const dy = t.clientY - this.touchStart.y;
+
+      if (dx * dx + dy * dy > this.DRAG_THRESHOLD * this.DRAG_THRESHOLD) {
+        this.touchMoved = true;
+      }
+    });
+
+    this.el.addEventListener('touchend', (e) => {
+      if (!this.touchStart) return;
+
+      const wasDrag = this.touchMoved;
+      const t = e.changedTouches[0];
+
+      this.touchStart = null;
+      this.touchMoved = false;
+
+      if (!wasDrag) {
+        this.handleClick(t.clientX, t.clientY);
+      }
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // HELPER: Hover logic shared by mouse + touch
+  // -------------------------------------------------------------------------
+  private handleHover(x: number, y: number) {
+    if (!this.map || this.map.getZoom()! < this.MIN_ZOOM) {
+      this.onHoverCell(null);
+      this.hovered = null;
+      return;
+    }
+
+    const latLng = this.screenToLatLng({ x, y });
+    if (!latLng) {
+      this.onHoverCell(null);
+      this.hovered = null;
+      return;
+    }
+
+    const coords = getCellCoords(latLng.lat(), latLng.lng());
+    this.hovered = coords;
+    this.onHoverCell(coords);
+  }
+
+  // -------------------------------------------------------------------------
+  // HELPER: Click logic shared by mouse + touch
+  // -------------------------------------------------------------------------
+  private handleClick(x: number, y: number) {
+    if (!this.map || this.map.getZoom()! < this.MIN_ZOOM) return;
+
+    const latLng = this.screenToLatLng({ x, y });
+    if (!latLng) return;
+
+    const coords = getCellCoords(latLng.lat(), latLng.lng());
+    this.onCellClick(coords, latLng.lat(), latLng.lng());
   }
 
   // -------------------------------------------------------------------------
@@ -104,28 +150,21 @@ export class MapEvents {
   // -------------------------------------------------------------------------
   private screenToLatLng(pt: { x: number; y: number }): google.maps.LatLng | null {
     const projection = this.map.getProjection();
-    const bounds = this.map.getBounds();
     const center = this.map.getCenter();
+    const bounds = this.map.getBounds();
     const zoom = this.map.getZoom();
 
-    if (!projection || !bounds || !center || zoom == null) return null;
+    if (!projection || !center || !bounds || zoom == null) return null;
 
-    const topRight = projection.fromLatLngToPoint(bounds.getNorthEast());
-    const bottomLeft = projection.fromLatLngToPoint(bounds.getSouthWest());
-    const centerWorld = projection.fromLatLngToPoint(center);
-    if (!topRight || !bottomLeft || !centerWorld) return null;
+    const centerPt = projection.fromLatLngToPoint(center);
+    const rect = this.map.getDiv().getBoundingClientRect();
+    if (!centerPt) return null;
 
     const scale = Math.pow(2, zoom);
 
-    const mapDiv = this.map.getDiv();
-    const rect = mapDiv.getBoundingClientRect();
-    const x = pt.x - rect.left;
-    const y = pt.y - rect.top;
+    const worldX = centerPt.x + (pt.x - (rect.left + rect.width / 2)) / scale;
+    const worldY = centerPt.y + (pt.y - (rect.top + rect.height / 2)) / scale;
 
-    const worldX = centerWorld.x + (x - rect.width / 2) / scale;
-    const worldY = centerWorld.y + (y - rect.height / 2) / scale;
-
-    const worldPoint = new google.maps.Point(worldX, worldY);
-    return projection.fromPointToLatLng(worldPoint);
+    return projection.fromPointToLatLng(new google.maps.Point(worldX, worldY));
   }
 }
