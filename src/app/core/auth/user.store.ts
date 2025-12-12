@@ -16,13 +16,18 @@ export class UserStore {
   private _user = signal<User | null>(null);
   readonly user = computed(() => this._user());
   readonly isLoggedIn = computed(() => this._user() !== null);
-
+  
   private _token = signal<string | null>(localStorage.getItem('accessToken'));
+  private awaitingEmailConfirmation = signal(false);
 
   constructor() {
     // restore session if token exists
     effect(() => {
       const token = this._token();
+
+      if (this.awaitingEmailConfirmation()) return;
+
+
       if (token && !this._user()) {
         this.auth.getProfile().subscribe({
           next: (user) => this._user.set(user),
@@ -41,6 +46,23 @@ export class UserStore {
         if (res.token) localStorage.setItem('accessToken', res.token);
       })
     );
+  }
+
+  register(email: string, password: string) {
+    return this.auth.register(email, password).pipe(
+      tap(res => {
+        this._user.set(res.user);
+        this._token.set(res.token ?? null);
+
+        if (res.token) localStorage.setItem('accessToken', res.token);
+
+        this.awaitingEmailConfirmation.set(true);
+      })
+    );
+  }
+
+  markEmailConfirmed() {
+    this.awaitingEmailConfirmation.set(false);
   }
 
   logout(callBackend = true) {

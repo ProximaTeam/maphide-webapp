@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../../../core/auth/auth';
 import { CommonModule } from '@angular/common';
+import { UserStore } from 'src/app/core/auth/user.store';
 
 @Component({
   selector: 'app-register',
@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Register {
-  private auth = inject(AuthService);
+  private userStore = inject(UserStore);
   private router = inject(Router);
 
   email = '';
@@ -35,7 +35,7 @@ export class Register {
     this.loading.set(true);
     this.error.set(null);
 
-    this.auth.register(this.email, this.password).subscribe({
+    this.userStore.register(this.email, this.password).subscribe({
       next: () => {
         this.loading.set(false);
         this.router.navigateByUrl('/auth/confirm-email');

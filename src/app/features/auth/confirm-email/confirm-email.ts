@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UserService } from '../../../core/user/user';
 import { CommonModule } from '@angular/common';
+import { UserStore } from 'src/app/core/auth/user.store';
 
 @Component({
     selector: 'app-confirm-email',
@@ -20,6 +21,7 @@ import { CommonModule } from '@angular/common';
 export class ConfirmEmailComponent {
     private userService = inject(UserService);
     private router = inject(Router);
+    private userStore = inject(UserStore);
 
     code = '';
     loading = signal(false);
@@ -46,6 +48,7 @@ export class ConfirmEmailComponent {
             next: () => {
                 this.loading.set(false);
                 this.success.set(true);
+                this.userStore.markEmailConfirmed();
                 setTimeout(() => {
                     this.router.navigateByUrl('/');
                 }, 1500);
