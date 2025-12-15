@@ -1,45 +1,132 @@
-.auth-form {
-  max-width: 360px;
-  margin: 80px auto;
+/* ────────────────────────────────────────────────
+   AUTH FORM SHARED STYLES
+   ──────────────────────────────────────────────── */
+
+.auth-form,
+.confirm-email-form {
+  max-width: 420px;
+  width: 100%;
+  margin: 40px auto;
+  padding: 24px 20px;
+
+  background: #0d1117;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
+}
 
-  h1 {
-    margin-bottom: 8px;
-  }
+/* Heading */
+.auth-form h1,
+.confirm-email-form h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--text-primary);
+}
 
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+/* Description text */
+.confirm-email-form .description {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Input groups */
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  span {
     font-size: 14px;
+    color: var(--text-secondary);
+  }
+}
 
-    span {
-      color: var(--text-secondary);
-    }
+/* Inputs */
+input {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #020617;
+  color: var(--text-primary);
+  font-size: 16px;
 
-    input {
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid #1f2933;
-      background: #020617;
-      color: var(--text-primary);
-    }
+  &:focus {
+    border-color: #0ea5e9;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.25);
+  }
+}
+
+/* Main button */
+button {
+  margin-top: 6px;
+  padding: 12px 16px;
+  font-size: 17px;
+  font-weight: 600;
+
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+  color: white;
+
+  transition: background 0.15s ease, opacity 0.15s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
   }
 
-  .error {
-    color: #f97373;
-    font-size: 0.875rem;
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+/* Error + Success messages */
+.error {
+  color: #f87171;
+  font-size: 14px;
+  margin-top: -6px;
+}
+
+.success {
+  color: #4ade80;
+  font-size: 14px;
+  margin-top: -6px;
+}
+
+/* ────────────────────────────────────────────────
+   MOBILE OPTIMIZATION
+   ──────────────────────────────────────────────── */
+@media (max-width: 600px) {
+
+  .auth-form,
+  .confirm-email-form {
+    margin: 20px auto;
+    width: calc(100% - 32px);
+    padding: 20px 18px;
+    border-radius: 14px;
+  }
+
+  .auth-form h1,
+  .confirm-email-form h1 {
+    font-size: 24px;
+  }
+
+  input {
+    padding: 12px;
+    font-size: 15px;
   }
 
   button {
-    margin-top: 8px;
-    padding: 10px 16px;
-    border-radius: 8px;
-    border: none;
-    background: linear-gradient(135deg, #0ea5e9, #06b6d4);
-    color: white;
-    cursor: pointer;
+    padding: 12px;
+    font-size: 16px;
   }
 }

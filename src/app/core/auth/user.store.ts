@@ -19,6 +19,8 @@ export class UserStore {
   
   private _token = signal<string | null>(localStorage.getItem('accessToken'));
   private awaitingEmailConfirmation = signal(false);
+  readonly isAwaitingEmailConfirmation = this.awaitingEmailConfirmation.asReadonly();
+
 
   constructor() {
     // restore session if token exists

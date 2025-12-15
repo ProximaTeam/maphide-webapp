@@ -8,12 +8,14 @@
   overflow: hidden;
 }
 
+/* EVENT LAYER (for clicks/touches) */
 .event-layer {
   position: absolute;
   inset: 0;
-  z-index: 3; // above hover canvas
+  z-index: 3; // above hover canvas + map
   pointer-events: auto;
   background: transparent;
+  touch-action: none; // important for mobile
 }
 
 /* MAP + CANVASES ----------------------------------------------------------- */
@@ -40,15 +42,12 @@
 }
 
 .grid-layer {
-  z-index: 1;
+  z-index: 1; // draw under hover
 }
 
-// draw under hover
 .hover-layer {
-  z-index: 2;
+  z-index: 2; // highlight on top
 }
-
-// highlight on top
 
 
 /* TOP BAR ------------------------------------------------------------------ */
@@ -70,8 +69,7 @@
   justify-content: space-between;
   padding: 0 20px;
 
-  z-index: 2000; // always above map + canvases
-  pointer-events: auto;
+  z-index: 2000;
 }
 
 .logo {
@@ -148,8 +146,7 @@
   color: var(--text-secondary);
   font-size: 13px;
 
-  z-index: 1500; // above canvases, below modal
-  pointer-events: auto;
+  z-index: 1500;
 }
 
 .info-panel {
@@ -181,7 +178,7 @@
 }
 
 
-/* DROP MODAL (FIXED + CORRECT LAYERING) ----------------------------------- */
+/* DROP MODAL --------------------------------------------------------------- */
 
 .drop-modal-backdrop {
   position: fixed;
@@ -191,8 +188,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
-  z-index: 3000; // highest layer
+  z-index: 3000;
 }
 
 .drop-modal {
@@ -213,7 +209,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   padding: 16px 20px;
   border-bottom: 1px solid rgba(15, 23, 42, 1);
 
@@ -258,24 +253,14 @@
     }
 
     textarea,
-    input[type='password'] {
+    input[type="password"],
+    input[type="number"] {
       background: #020617;
       border-radius: 8px;
       border: 1px solid rgba(30, 64, 175, 0.7);
       padding: 8px 10px;
       color: var(--text-primary);
       font-size: 14px;
-      resize: vertical;
-    }
-  }
-
-  .checkbox {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-
-    span {
-      font-size: 13px;
     }
   }
 
@@ -310,3 +295,101 @@
     color: white;
   }
 }
+
+
+/* ────────────────────────────────────────────────
+   MOBILE OPTIMIZATION (≤ 600px)
+   ──────────────────────────────────────────────── */
+@media (max-width: 600px) {
+
+  /* TOP BAR / MOBILE HEADER */
+  .top-bar {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    height: 52px;
+    padding: 0 10px;
+
+    border-radius: 10px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    /* Keep row layout, but tighten spacing */
+    flex-direction: row;
+  }
+
+  .logo {
+    gap: 8px;
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+    }
+
+    .logo-text {
+      font-size: 15px;
+      font-weight: 600;
+    }
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    a,
+    button {
+      padding: 6px 10px;
+      font-size: 11px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .welcome {
+      display: none; // hide email on mobile
+    }
+  }
+
+  /* INFO PANEL */
+  .info-panel,
+  .help-panel {
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    max-width: unset;
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+
+  /* MODAL */
+  .drop-modal {
+    max-width: 92%;
+    border-radius: 12px;
+  }
+
+  .drop-modal-body {
+    padding: 14px;
+
+    input,
+    textarea {
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    .dark-btn,
+    .primary-btn {
+      padding: 10px;
+      font-size: 14px;
+    }
+  }
+
+  .drop-modal-footer button {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+}
+
