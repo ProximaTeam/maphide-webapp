@@ -25,6 +25,7 @@ export class DropCreate {
         otcLock: boolean;
         gpsLock: boolean;
         hidden: boolean;
+        file?: File;
     }>();
 
     @Output() close = new EventEmitter<void>();
@@ -35,6 +36,9 @@ export class DropCreate {
     gpsLock = signal(false);
     password = signal('');
     hidden = signal(false);
+    selectedFile = signal<File | null>(null);
+    selectedFileName = signal('');
+    selectedFileSize = signal(0);
 
     submit() {
         if (!this.message().trim()) return;
@@ -45,7 +49,18 @@ export class DropCreate {
             password: this.passwordLock() ? this.password() : undefined,
             hidden: this.hidden(),
             otcLock: this.otcLock(),
-            gpsLock: this.gpsLock()
+            gpsLock: this.gpsLock(),
+            file: this.selectedFile() ?? undefined,
         });
+    }
+
+
+    onFileSelected(evt: Event) {
+        const input = evt.target as HTMLInputElement;
+        const file = input.files?.[0] ?? null;
+
+        this.selectedFile.set(file);
+        this.selectedFileName.set(file?.name ?? '');
+        this.selectedFileSize.set(file?.size ?? 0);
     }
 }

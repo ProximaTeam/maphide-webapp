@@ -1,9 +1,11 @@
+<!-- src/app/features/map/map.html -->
 <div class="map-root">
   <div class="top-bar">
     <div class="logo">
       <div class="logo-icon">🛡️</div>
       <div class="logo-text">Map<span>Hide</span>.com</div>
     </div>
+
     <div class="actions">
       <button class="secondary" (click)="toggleSatellite()">
         {{ isSatellite ? 'Map' : 'Satellite' }}
@@ -17,7 +19,9 @@
 
       <!-- Logged in -->
       <ng-container *ngIf="isLoggedIn()">
-        <span class="welcome">Hi, {{ user()?.email }}</span>
+        <a class="welcome-link" routerLink="/profile">
+          Hi, {{ user()?.email }}
+        </a>
         <button class="secondary" (click)="userStore.logout()">Logout</button>
       </ng-container>
     </div>
@@ -25,7 +29,14 @@
 
   <div #eventLayer class="map-shell event-layer">
     <div #mapContainer class="map-container"></div>
+
+    <!-- grid lines -->
     <canvas #gridCanvas class="grid-layer"></canvas>
+
+    <!-- ✅ markers (visible, non-hidden drops) -->
+    <canvas #markersCanvas class="markers-layer"></canvas>
+
+    <!-- hover highlight -->
     <canvas #hoverCanvas class="hover-layer"></canvas>
   </div>
 
@@ -38,13 +49,25 @@
     </ul>
   </div>
 
-  <!-- CREATE DROP MODAL (New Component) -->
-  <mh-drop-create *ngIf="dropModalOpen" [lat]="dropLat!" [lng]="dropLng!" [saving]="dropSaving" [error]="dropError"
-    (close)="closeDropModal()" (save)="onCreateDrop($event)"></mh-drop-create>
+  <!-- CREATE DROP MODAL -->
+  <mh-drop-create
+    *ngIf="dropModalOpen"
+    [lat]="dropLat!"
+    [lng]="dropLng!"
+    [saving]="dropSaving"
+    [error]="dropError"
+    (close)="closeDropModal()"
+    (save)="onCreateDrop($event)"
+  ></mh-drop-create>
 
-
-  <!-- EXISTING DROP MODAL (New Component) -->
-  <mh-drop-view *ngIf="existingModalOpen" [drops]="existingDrops" [decrypting]="decrypting" [error]="decryptError"
-    (close)="closeExistingModal()" (decrypt)="onUnlockDrop($event)"></mh-drop-view>
-
+  <!-- EXISTING DROP MODAL -->
+  <mh-drop-view
+    *ngIf="existingModalOpen"
+    [drops]="existingDrops"
+    [decrypting]="decrypting"
+    [error]="decryptError"
+    (close)="closeExistingModal()"
+    (decrypt)="onUnlockDrop($event)"
+    (download)="onDownloadDropFile($event)"
+  ></mh-drop-view>
 </div>

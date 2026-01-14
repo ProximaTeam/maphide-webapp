@@ -18,6 +18,7 @@ export class DropView {
     @Output() decrypt = new EventEmitter<any>();
     @Output() generateOtcEvent = new EventEmitter<any>();
     @Output() verifyOtcEvent = new EventEmitter<any>();
+    @Output() download = new EventEmitter<any>();
 
     password = signal('');
     otc = signal('');
@@ -50,6 +51,10 @@ export class DropView {
             otc: this.otc()!,
             requireGps: false
         });
+    }
+
+    downloadFile(drop: any) {
+        this.download.emit(drop);
     }
 }
 

@@ -1,3 +1,5 @@
+/* src/app/features/map/map.scss */
+
 /* ROOT LAYOUT ------------------------------------------------------------- */
 
 .map-root {
@@ -12,7 +14,7 @@
 .event-layer {
   position: absolute;
   inset: 0;
-  z-index: 3; // above hover canvas + map
+  z-index: 3; // above canvases + map
   pointer-events: auto;
   background: transparent;
   touch-action: none; // important for mobile
@@ -33,6 +35,7 @@
 }
 
 .grid-layer,
+.markers-layer,
 .hover-layer {
   position: absolute;
   inset: 0;
@@ -42,13 +45,17 @@
 }
 
 .grid-layer {
-  z-index: 1; // draw under hover
+  z-index: 1; // draw under markers/hover
+}
+
+/* ✅ markers between grid and hover */
+.markers-layer {
+  z-index: 2;
 }
 
 .hover-layer {
-  z-index: 2; // highlight on top
+  z-index: 3; // highlight on top
 }
-
 
 /* TOP BAR ------------------------------------------------------------------ */
 
@@ -130,7 +137,6 @@
   }
 }
 
-
 /* INFO PANELS -------------------------------------------------------------- */
 
 .info-panel,
@@ -176,7 +182,6 @@
     padding: 4px 0;
   }
 }
-
 
 /* DROP MODAL --------------------------------------------------------------- */
 
@@ -253,8 +258,8 @@
     }
 
     textarea,
-    input[type="password"],
-    input[type="number"] {
+    input[type='password'],
+    input[type='number'] {
       background: #020617;
       border-radius: 8px;
       border: 1px solid rgba(30, 64, 175, 0.7);
@@ -296,12 +301,10 @@
   }
 }
 
-
 /* ────────────────────────────────────────────────
    MOBILE OPTIMIZATION (≤ 600px)
    ──────────────────────────────────────────────── */
 @media (max-width: 600px) {
-
   /* TOP BAR / MOBILE HEADER */
   .top-bar {
     top: 8px;
@@ -317,7 +320,6 @@
     justify-content: space-between;
     gap: 8px;
 
-    /* Keep row layout, but tighten spacing */
     flex-direction: row;
   }
 
@@ -350,7 +352,7 @@
     }
 
     .welcome {
-      display: none; // hide email on mobile
+      display: none;
     }
   }
 
@@ -392,4 +394,3 @@
     font-size: 13px;
   }
 }
-

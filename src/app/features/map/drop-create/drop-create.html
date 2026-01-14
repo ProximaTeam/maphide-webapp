@@ -18,6 +18,15 @@
                     placeholder="Enter your secret..."></textarea>
             </label>
 
+            <label class="field">
+                <span>Attach file (optional)</span>
+                <input type="file" (change)="onFileSelected($event)" accept="application/pdf" />
+                <small *ngIf="selectedFileName()">
+                    Selected: {{ selectedFileName() }} ({{ selectedFileSize() }} bytes)
+                </small>
+            </label>
+
+
             <label class="field checkbox">
                 <input type="checkbox" [(ngModel)]="passwordLock" (ngModelChange)="passwordLock.set($event)" />
                 <span>Password protect this drop</span>

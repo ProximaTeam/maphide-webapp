@@ -19,6 +19,12 @@ export const routes: Routes = [
         .then(m => m.ConfirmEmailComponent)
   },
   {
+    path: 'profile',
+    loadComponent: () =>
+      import('./features/profile/profile')
+        .then(m => m.Profile)
+  },
+  {
     path: '**',
     redirectTo: ''
   }

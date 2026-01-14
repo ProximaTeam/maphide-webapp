@@ -14,8 +14,15 @@
                     <!-- METADATA -->
                     <div class="section meta">
                         <p><span>Created:</span> {{ d.createdAt | date:'medium' }}</p>
-                        <p><span>Location:</span> {{ d.location.coordinates[0] | number:'1.5-5' }}, {{
-                            d.location.coordinates[1] | number:'1.5-5' }}</p>
+                        <p>
+                            <span>Location:</span>
+                            {{
+                            (d.lat ?? d.location?.coordinates?.[0]) | number:'1.5-5'
+                            }},
+                            {{
+                            (d.lng ?? d.location?.coordinates?.[1]) | number:'1.5-5'
+                            }}
+                        </p>
                     </div>
 
 
@@ -97,6 +104,12 @@
                     <div *ngIf="d.unlocked" class="section">
                         <p class="section-title">Decrypted Message</p>
                         <pre class="message-box">{{ d.decrypted }}</pre>
+                    </div>
+
+                    <div *ngIf="d.unlocked && d.hasFile && d.fileId" class="section">
+                        <button class="dark-btn full" (click)="downloadFile(d)">
+                            Download {{ d.fileName || 'file' }}
+                        </button>
                     </div>
 
                 </div>

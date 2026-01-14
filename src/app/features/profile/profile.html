@@ -1,0 +1,56 @@
+<div class="profile-page">
+  <div class="profile-card">
+    <div class="header">
+      <h1>Profile</h1>
+      <p class="sub" *ngIf="userStore.user() as u">
+        Signed in as <span>{{ u.email || u.username }}</span>
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Change password</h2>
+
+      <form class="form" (ngSubmit)="submit()">
+        <label>
+          <span>Current password</span>
+          <input
+            type="password"
+            [(ngModel)]="oldPassword"
+            name="oldPassword"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+
+        <label>
+          <span>New password</span>
+          <input
+            type="password"
+            [(ngModel)]="newPassword"
+            name="newPassword"
+            autocomplete="new-password"
+            required
+          />
+        </label>
+
+        <label>
+          <span>Confirm new password</span>
+          <input
+            type="password"
+            [(ngModel)]="confirmPassword"
+            name="confirmPassword"
+            autocomplete="new-password"
+            required
+          />
+        </label>
+
+        <p class="error" *ngIf="error()">{{ error() }}</p>
+        <p class="success" *ngIf="success()">{{ success() }}</p>
+
+        <button type="submit" [disabled]="loading()">
+          {{ loading() ? 'Updating…' : 'Update password' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

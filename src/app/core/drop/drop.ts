@@ -41,6 +41,7 @@ export class DropService {
         gpsLock: boolean;
         password?: string;
         hidden: boolean;
+        file?: File;
     }): Observable<any> {
         const effectivePassword =
             params.passwordLock ? (params.password || '') : '';
@@ -55,8 +56,8 @@ export class DropService {
                     nonce: enc.nonce,
                     salt: enc.salt,
                     kdfParams: enc.kdfParams,
-                    fileName: '',
-                    fileSize: 0,
+                    fileName: params.file?.name ?? '',
+                    fileSize: params.file?.size ?? 0,
                     lat: params.lat,
                     lng: params.lng,
                     passwordLock: params.passwordLock,
@@ -94,6 +95,10 @@ export class DropService {
         return this.api.get(`/drop/get-otc/${id}`);
     }
 
+    checkPassword(id: string, password: string) {
+        return this.api.post(`/drop/check-password/${id}`, { password });
+    }
+
     /**
      * Optional: Retrieve encrypted content for a specific drop by id.
      * (Some projects store only metadata in `/drop/at`, but yours returns ciphertext already.)
@@ -112,5 +117,9 @@ export class DropService {
         kdfParams: any;
     }, password: string): Promise<string> {
         return this.crypto.decrypt(payload, password);
+    }
+
+    getVisibleDrops() {
+        return this.api.get<any[]>('/drop/visible-drops');
     }
 }
