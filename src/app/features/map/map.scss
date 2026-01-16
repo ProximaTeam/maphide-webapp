@@ -305,6 +305,7 @@
    MOBILE OPTIMIZATION (≤ 600px)
    ──────────────────────────────────────────────── */
 @media (max-width: 600px) {
+
   /* TOP BAR / MOBILE HEADER */
   .top-bar {
     top: 8px;
@@ -342,6 +343,8 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
+    /* allows children to shrink */
 
     a,
     button {
@@ -350,11 +353,19 @@
       border-radius: 6px;
       white-space: nowrap;
     }
-
-    .welcome {
-      display: none;
-    }
   }
+
+  /* truncate email instead of hiding it */
+  .actions .welcome-link {
+    max-width: 110px;
+    /* tweak as needed */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    flex-shrink: 1;
+  }
+
 
   /* INFO PANEL */
   .info-panel,

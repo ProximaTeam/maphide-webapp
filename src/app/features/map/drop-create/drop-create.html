@@ -55,6 +55,20 @@
             <p class="error" *ngIf="error">{{ error }}</p>
         </div>
 
+        <div class="auth-overlay" *ngIf="requireAuth" (click)="$event.stopPropagation()">
+            <div class="auth-card">
+                <h3>You have to be logged in to use the features.</h3>
+                <p>Register or login to create drops!</p>
+
+                <div class="auth-actions">
+                    <button class="secondary" type="button" (click)="login.emit()">Login</button>
+                    <button class="primary" type="button" (click)="register.emit()">Register</button>
+                </div>
+
+                <button class="link" type="button" (click)="close.emit()">Cancel</button>
+            </div>
+        </div>
+
         <div class="drop-modal-footer">
             <button type="button" class="secondary" (click)="close.emit()">Cancel</button>
             <button type="button" class="primary" [disabled]="saving" (click)="submit()">

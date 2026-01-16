@@ -18,6 +18,12 @@ export class DropCreate {
     @Input() saving = false;
     @Input() error: string | null = null;
 
+    @Input() requireAuth = false;
+
+    @Output() login = new EventEmitter<void>();
+    @Output() register = new EventEmitter<void>();
+
+
     @Output() save = new EventEmitter<{
         message: string;
         passwordLock: boolean;
@@ -41,6 +47,7 @@ export class DropCreate {
     selectedFileSize = signal(0);
 
     submit() {
+        if (this.requireAuth) return;
         if (!this.message().trim()) return;
 
         this.save.emit({
