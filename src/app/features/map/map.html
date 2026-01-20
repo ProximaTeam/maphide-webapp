@@ -50,12 +50,13 @@
   </div>
 
   <!-- CREATE DROP MODAL -->
-  <mh-drop-create *ngIf="dropModalOpen" [lat]="dropLat!" [lng]="dropLng!" [saving]="dropSaving" [error]="dropError" [requireAuth]="!isLoggedIn()"
-    (close)="closeDropModal()" (save)="onCreateDrop($event)" (login)="goLogin()"
+  <mh-drop-create *ngIf="dropModalOpen" [lat]="dropLat!" [lng]="dropLng!" [saving]="dropSaving" [error]="dropError"
+    [requireAuth]="!isLoggedIn()" (close)="closeDropModal()" (save)="onCreateDrop($event)" (login)="goLogin()"
     (register)="goRegister()"></mh-drop-create>
 
   <!-- EXISTING DROP MODAL -->
   <mh-drop-view *ngIf="existingModalOpen" [drops]="existingDrops" [decrypting]="decrypting" [error]="decryptError"
-    (close)="closeExistingModal()" (decrypt)="onUnlockDrop($event)"
-    (download)="onDownloadDropFile($event)"></mh-drop-view>
+    (close)="closeExistingModal()" (action)="onDropAction($event)" (download)="onDownloadDropFile($event)"
+    (delete)="onDeleteDrop($event)"></mh-drop-view>
+
 </div>

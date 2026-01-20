@@ -99,17 +99,10 @@ export class DropService {
         return this.api.post(`/drop/check-password/${id}`, { password });
     }
 
-    /**
-     * Optional: Retrieve encrypted content for a specific drop by id.
-     * (Some projects store only metadata in `/drop/at`, but yours returns ciphertext already.)
-     */
     getEncryptedContent(id: string) {
         return this.api.get(`/drop/content/${id}`);
     }
 
-    /**
-     * Convenience wrapper around CryptoService.decrypt.
-     */
     decryptLocal(payload: {
         ciphertext: string;
         nonce: string;
@@ -122,4 +115,9 @@ export class DropService {
     getVisibleDrops() {
         return this.api.get<any[]>('/drop/visible-drops');
     }
+
+    deleteDrop(id: string) {
+        return this.api.get(`/drop/delete/${id}`);
+    }
+
 }

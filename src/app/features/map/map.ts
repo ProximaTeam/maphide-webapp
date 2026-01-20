@@ -26,6 +26,7 @@ import { MapEvents } from 'src/app/core/map/map-events';
 import { MapRenderer } from 'src/app/core/map/map-renderer';
 import { UserStore } from 'src/app/core/auth/user.store';
 import { FileService } from 'src/app/core/file/file';
+import { DropAction } from './map.types';
 
 declare const google: any;
 
@@ -139,6 +140,7 @@ export class Map implements AfterViewInit {
       disableDefaultUI: true,
       gestureHandling: 'greedy',
       mapTypeId: google.maps.MapTypeId.ROADMAP,
+      clickableIcons: false,
     });
 
     this.mapEvents = new MapEvents(
@@ -216,13 +218,6 @@ export class Map implements AfterViewInit {
     }
 
     this.redrawGridAndMarkers();
-  }
-
-  private redrawAll() {
-    if (!this.map || !this.renderer) return;
-
-    this.renderer.drawGrid(this.map, this.gridCanvas.nativeElement);
-    this.drawVisibleMarkers();
   }
 
   // ---------------------------------------------------------------------------
@@ -423,191 +418,222 @@ export class Map implements AfterViewInit {
     });
   }
 
-  onUnlockDrop(ev: {
-    drop: any;
-    password?: string;
-    otc?: number | string;
-    requireGps: boolean;
-    generateOtc?: boolean;
-  }) {
+  private initUnlockState(d: any) {
+    // defaults: if lock not enabled, consider it already "ok"
+    d.pwOk ??= !d.passwordLock;
+    d.otcOk ??= !d.otcLock;
+    d.gpsOk ??= !d.gpsLock;
+
+    d.pwVerifying ??= false;
+    d.otcVerifying ??= false;
+    d.gpsVerifying ??= false;
+
+    d.otcGenerated ??= false;
+  }
+
+  private setDropBusy(d: any, key: 'pwVerifying' | 'otcVerifying' | 'gpsVerifying', v: boolean) {
+    d[key] = v;
+    this.cdr.markForCheck();
+  }
+
+  onDropAction(ev: DropAction) {
     const d = ev.drop;
+    if (!d) return;
 
-    // ✅ per-drop flags (persist between clicks)
-    d.__pwOk ??= !d.passwordLock;
-    d.__otcOk ??= !d.otcLock;
-    d.__gpsOk ??= !d.gpsLock;
-
+    this.initUnlockState(d);
     this.decryptError = null;
     this.cdr.markForCheck();
 
-    const setBusy = (v: boolean) => {
-      this.decrypting = v;
-      this.cdr.markForCheck();
-    };
+    // -----------------------------
+    // PASSWORD VERIFY (independent)
+    // -----------------------------
+    if (ev.type === 'pw') {
+      if (!d.passwordLock) {
+        d.pwOk = true;
+        this.cdr.markForCheck();
+        return;
+      }
 
-    const performDecrypt = () => {
-      setBusy(true);
+      const pw = (ev.password ?? '').trim();
+      if (!pw) {
+        this.decryptError = 'Password required';
+        this.cdr.markForCheck();
+        return;
+      }
 
-      this.dropHandler
-        .decrypt(d, (ev.password ?? '') as string)
-        .then((text) => {
-          d.unlocked = true;
-          d.decrypted = text;
-          setBusy(false);
-        })
-        .catch((err) => {
-          console.error(err);
-          this.decryptError = 'Could not decrypt (wrong password or drop not unlocked yet)';
-          setBusy(false);
-        });
-    };
+      this.setDropBusy(d, 'pwVerifying', true);
 
-    // ---------------------------------------------------------------------------
-    // 1) Generate OTC
-    // ---------------------------------------------------------------------------
-    if (ev.generateOtc) {
-      setBusy(true);
-
-      this.dropService.generateOtc(d._id).subscribe({
+      // IMPORTANT: your backend expects BODY; use POST in frontend service
+      this.dropService.checkPassword(d._id ?? d.dropId, pw).subscribe({
         next: () => {
-          d.otcGenerated = true;
-          setBusy(false);
+          d.pwOk = true;
+          this.setDropBusy(d, 'pwVerifying', false);
         },
-        error: (err) => {
+        error: (err: any) => {
           console.error(err);
-          this.decryptError = 'Could not generate code';
-          setBusy(false);
-        },
+          d.pwOk = false;
+          this.decryptError = 'Incorrect password';
+          this.setDropBusy(d, 'pwVerifying', false);
+        }
       });
 
       return;
     }
 
-    // ---------------------------------------------------------------------------
-    // 2) Verify Password (server-side) – sets d.__pwOk
-    // IMPORTANT: needs backend POST /drop/check-password/:id
-    // ---------------------------------------------------------------------------
-    const verifyPassword = (): Promise<void> =>
-      new Promise((resolve, reject) => {
-        if (!d.passwordLock || d.__pwOk) return resolve();
+    // -----------------------------
+    // OTC GENERATE (independent)
+    // -----------------------------
+    if (ev.type === 'otc-generate') {
+      if (!d.otcLock) {
+        d.otcOk = true;
+        this.cdr.markForCheck();
+        return;
+      }
 
-        const pw = (ev.password ?? '').trim();
-        if (!pw) {
-          this.decryptError = 'Password required';
-          this.cdr.markForCheck();
-          return reject();
+      this.setDropBusy(d, 'otcVerifying', true);
+
+      this.dropService.generateOtc(d._id ?? d.dropId).subscribe({
+        next: (res: any) => {
+          d.otcGenerated = true;
+
+          // if backend returns code in dev
+          if (res?.code) d.generatedOtc = res.code;
+
+          this.setDropBusy(d, 'otcVerifying', false);
+        },
+        error: (err: any) => {
+          console.error(err);
+          this.decryptError = 'Could not generate code';
+          this.setDropBusy(d, 'otcVerifying', false);
         }
-
-        setBusy(true);
-        this.dropService.checkPassword(d._id, pw).subscribe({
-          next: () => {
-            d.__pwOk = true;
-            setBusy(false);
-            resolve();
-          },
-          error: (err) => {
-            console.error(err);
-            d.__pwOk = false;
-            this.decryptError = 'Incorrect password';
-            setBusy(false);
-            reject();
-          },
-        });
       });
 
-    // ---------------------------------------------------------------------------
-    // 3) Verify OTC – sets d.__otcOk
-    // ---------------------------------------------------------------------------
-    const verifyOtc = (): Promise<void> =>
-      new Promise((resolve, reject) => {
-        if (!d.otcLock || d.__otcOk) return resolve();
+      return;
+    }
 
-        const codeRaw = ev.otc;
-        const code = typeof codeRaw === 'string' ? Number(codeRaw) : codeRaw;
+    // -----------------------------
+    // OTC VERIFY (independent)
+    // -----------------------------
+    if (ev.type === 'otc-verify') {
+      if (!d.otcLock) {
+        d.otcOk = true;
+        this.cdr.markForCheck();
+        return;
+      }
 
-        if (!code) {
-          this.decryptError = 'One-time code required';
-          this.cdr.markForCheck();
-          return reject();
+      const raw = ev.code;
+      const code = typeof raw === 'string' ? Number(raw) : raw;
+
+      if (!code) {
+        this.decryptError = 'One-time code required';
+        this.cdr.markForCheck();
+        return;
+      }
+
+      this.setDropBusy(d, 'otcVerifying', true);
+
+      this.dropService.checkOtc(d._id ?? d.dropId, code).subscribe({
+        next: () => {
+          d.otcOk = true;
+          this.setDropBusy(d, 'otcVerifying', false);
+        },
+        error: (err: any) => {
+          console.error(err);
+          d.otcOk = false;
+          this.decryptError = 'Invalid one-time code';
+          this.setDropBusy(d, 'otcVerifying', false);
         }
+      });
 
-        setBusy(true);
-        this.dropService.checkOtc(d._id, code).subscribe({
-          next: () => {
-            d.__otcOk = true;
-            setBusy(false);
-            resolve();
-          },
-          error: (err) => {
-            console.error(err);
+      return;
+    }
 
-            // if backend returns "already verified" treat it as ok
-            const msg = err?.error?.message ?? '';
-            if (msg.toLowerCase().includes('already')) {
-              d.__otcOk = true;
-              setBusy(false);
-              return resolve();
-            }
+    // -----------------------------
+    // GPS VERIFY (independent)
+    // -----------------------------
+    if (ev.type === 'gps') {
+      if (!d.gpsLock) {
+        d.gpsOk = true;
+        this.cdr.markForCheck();
+        return;
+      }
 
-            d.__otcOk = false;
-            this.decryptError = 'Invalid one-time code';
-            setBusy(false);
-            reject();
-          },
+      this.setDropBusy(d, 'gpsVerifying', true);
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          this.dropService
+            .checkGps(d._id ?? d.dropId, pos.coords.latitude, pos.coords.longitude)
+            .subscribe({
+              next: () => {
+                d.gpsOk = true;
+                this.setDropBusy(d, 'gpsVerifying', false);
+              },
+              error: (err: any) => {
+                console.error(err);
+                d.gpsOk = false;
+                this.decryptError = 'GPS location incorrect';
+                this.setDropBusy(d, 'gpsVerifying', false);
+              }
+            });
+        },
+        (err) => {
+          console.error(err);
+          d.gpsOk = false;
+          this.decryptError = 'GPS permission denied';
+          this.setDropBusy(d, 'gpsVerifying', false);
+        }
+      );
+
+      return;
+    }
+
+    // -----------------------------
+    // FINAL DECRYPT (requires all ok)
+    // -----------------------------
+    if (ev.type === 'decrypt') {
+      // require each lock to be verified first
+      if (d.passwordLock && !d.pwOk) {
+        this.decryptError = 'Verify password first';
+        this.cdr.markForCheck();
+        return;
+      }
+      if (d.otcLock && !d.otcOk) {
+        this.decryptError = 'Verify one-time code first';
+        this.cdr.markForCheck();
+        return;
+      }
+      if (d.gpsLock && !d.gpsOk) {
+        this.decryptError = 'Verify GPS first';
+        this.cdr.markForCheck();
+        return;
+      }
+
+      this.decrypting = true;
+      this.cdr.markForCheck();
+
+      // decrypt is client-side using password (or '' if not locked)
+      const pw = (ev.password ?? '') as string;
+
+      this.dropHandler.decrypt(d, pw)
+        .then((text) => {
+          d.unlocked = true;
+          d.decrypted = text;
+          this.decrypting = false;
+          this.cdr.markForCheck();
+        })
+        .catch((err: any) => {
+          console.error(err);
+          this.decryptError = 'Could not decrypt';
+          this.decrypting = false;
+          this.cdr.markForCheck();
         });
-      });
 
-    // ---------------------------------------------------------------------------
-    // 4) Verify GPS – sets d.__gpsOk
-    // ---------------------------------------------------------------------------
-    const verifyGps = (): Promise<void> =>
-      new Promise((resolve, reject) => {
-        if (!d.gpsLock || d.__gpsOk) return resolve();
-
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            setBusy(true);
-
-            this.dropService
-              .checkGps(d._id, pos.coords.latitude, pos.coords.longitude)
-              .subscribe({
-                next: () => {
-                  d.__gpsOk = true;
-                  setBusy(false);
-                  resolve();
-                },
-                error: (err) => {
-                  console.error(err);
-                  d.__gpsOk = false;
-                  this.decryptError = 'GPS location incorrect';
-                  setBusy(false);
-                  reject();
-                },
-              });
-          },
-          (err) => {
-            console.error(err);
-            d.__gpsOk = false;
-            this.decryptError = 'GPS permission denied';
-            this.cdr.markForCheck();
-            reject();
-          },
-        );
-      });
-
-    // ---------------------------------------------------------------------------
-    // 5) Step-by-step unlock flow:
-    // password → otc → gps → decrypt
-    // ---------------------------------------------------------------------------
-    verifyPassword()
-      .then(() => verifyOtc())
-      .then(() => verifyGps())
-      .then(() => performDecrypt())
-      .catch(() => {
-        // error already set
-        setBusy(false);
-      });
+      return;
+    }
   }
+
+
 
 
 
@@ -635,4 +661,35 @@ export class Map implements AfterViewInit {
     this.closeDropModal();
     this.router.navigate(['/auth/register'], { queryParams: { returnUrl: '/map' } });
   }
+
+  onDeleteDrop(drop: any) {
+    const id = drop.dropId ?? drop._id;
+    if (!id) return;
+
+    const ok = confirm('Delete this drop permanently?');
+    if (!ok) return;
+
+    this.dropService.deleteDrop(id).subscribe({
+      next: () => {
+        // remove from currently shown list
+        this.existingDrops = this.existingDrops.filter(d => (d.dropId ?? d._id) !== id);
+
+        // if modal is empty after delete, close it
+        if (this.existingDrops.length === 0) {
+          this.existingModalOpen = false;
+        }
+
+        // refresh markers (visible drops list)
+        this.loadVisibleDropMarkers();
+
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error(err);
+        this.decryptError = 'Failed to delete drop';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
 }

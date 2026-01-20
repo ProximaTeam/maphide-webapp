@@ -1,125 +1,203 @@
 <div class="drop-modal-backdrop" (click)="close.emit()">
-    <div class="drop-modal" (click)="$event.stopPropagation()">
+  <div class="drop-modal" (click)="$event.stopPropagation()">
 
-        <div class="drop-modal-header">
-            <h2>Drop Found</h2>
-            <button class="close-btn" type="button" (click)="close.emit()">✕</button>
+    <div class="drop-modal-header">
+      <div class="header-left">
+        <div class="header-icon">🛡️</div>
+        <div class="header-text">
+          <h2>Drop Found</h2>
+          <p class="sub">Complete required checks in any order, then decrypt.</p>
         </div>
+      </div>
 
-        <div class="drop-modal-body">
-
-            <ng-container *ngFor="let d of drops">
-                <div class="drop-item">
-
-                    <!-- METADATA -->
-                    <div class="section meta">
-                        <p><span>Created:</span> {{ d.createdAt | date:'medium' }}</p>
-                        <p>
-                            <span>Location:</span>
-                            {{
-                            (d.lat ?? d.location?.coordinates?.[0]) | number:'1.5-5'
-                            }},
-                            {{
-                            (d.lng ?? d.location?.coordinates?.[1]) | number:'1.5-5'
-                            }}
-                        </p>
-                    </div>
-
-
-                    <!-- PASSWORD LOCK -->
-                    <div *ngIf="d.passwordLock && !d.unlocked" class="section">
-                        <p class="section-title">Password Required</p>
-
-                        <label class="field">
-                            <span>Password</span>
-                            <input type="password" [(ngModel)]="password" (ngModelChange)="password.set($event)"
-                                placeholder="Enter password" />
-                        </label>
-                    </div>
-
-
-                    <!-- 🔐 OTC LOCK -->
-                    <div *ngIf="d.otcLock && !d.unlocked" class="section otc-section">
-
-                        <p class="section-title">One-Time Code Verification</p>
-
-                        <!-- BEFORE GENERATION -->
-                        <div *ngIf="!d.otcGenerated" class="otc-step">
-                            <p class="hint">
-                                This drop requires a one-time unlock code.
-                                Press the button below to generate the code — it will be sent to your email.
-                            </p>
-
-                            <button class="dark-btn full" (click)="generateOtc(d)" [disabled]="otcGenerating()">
-                                {{ otcGenerating() ? 'Generating…' : 'Generate One-Time Code' }}
-                            </button>
-
-                            <p class="error" *ngIf="error">{{ error }}</p>
-                        </div>
-
-                        <!-- AFTER GENERATION -->
-                        <div *ngIf="d.otcGenerated" class="otc-step generated">
-
-                            <label class="field">
-                                <span>Enter the 4-digit code</span>
-                                <input type="number" maxlength="4" class="otc-input" [(ngModel)]="otc"
-                                    placeholder="1234" />
-                            </label>
-
-                            <button class="dark-btn full" (click)="submitOtc(d)" [disabled]="otcVerifying()">
-                                {{ otcVerifying() ? 'Verifying…' : 'Unlock' }}
-                            </button>
-
-                            <p class="error" *ngIf="error">{{ error }}</p>
-
-                            <p class="info-code">
-                                <strong>Code sent:</strong> {{ d.generatedOtc }}
-                            </p>
-                        </div>
-
-                    </div>
-
-
-
-
-                    <!-- GPS LOCK -->
-                    <div *ngIf="d.gpsLock && !d.unlocked" class="section">
-                        <p class="section-title">GPS Verification</p>
-                        <p class="hint">You must physically be near the drop location.</p>
-                    </div>
-
-
-                    <!-- MASTER UNLOCK BUTTON -->
-                    <div *ngIf="!d.unlocked" class="section">
-                        <button class="primary-btn" (click)="submitDecrypt(d)" [disabled]="decrypting">
-                            {{ decrypting ? 'Unlocking…' : 'Unlock Drop' }}
-                        </button>
-
-
-                        <p class="error" *ngIf="error">{{ error }}</p>
-                    </div>
-
-
-                    <!-- DECRYPTED MESSAGE -->
-                    <div *ngIf="d.unlocked" class="section">
-                        <p class="section-title">Decrypted Message</p>
-                        <pre class="message-box">{{ d.decrypted }}</pre>
-                    </div>
-
-                    <div *ngIf="d.unlocked && d.hasFile && d.fileId" class="section">
-                        <button class="dark-btn full" (click)="downloadFile(d)">
-                            Download {{ d.fileName || 'file' }}
-                        </button>
-                    </div>
-
-                </div>
-            </ng-container>
-
-        </div>
-
-        <div class="drop-modal-footer">
-            <button class="secondary" (click)="close.emit()">Close</button>
-        </div>
-
+      <button class="close-btn" type="button" (click)="close.emit()" aria-label="Close">✕</button>
     </div>
+
+    <div class="drop-modal-body">
+      <ng-container *ngFor="let d of drops">
+
+        <!-- UNLOCK SUMMARY -->
+        <div *ngIf="!d.unlocked && (d.passwordLock || d.otcLock || d.gpsLock)" class="unlock-summary">
+          <div class="summary-left">
+            <div class="summary-title">Unlock</div>
+            <div class="summary-sub">Complete the required checks below.</div>
+          </div>
+
+          <div class="summary-chips">
+            <span *ngIf="d.passwordLock" class="chip" [class.ok]="d.pwOk">
+              <span class="dot"></span>
+              Password
+              <span class="state">{{ d.pwOk ? 'Verified' : 'Required' }}</span>
+            </span>
+
+            <span *ngIf="d.otcLock" class="chip" [class.ok]="d.otcOk">
+              <span class="dot"></span>
+              One-time code
+              <span class="state">{{ d.otcOk ? 'Verified' : 'Required' }}</span>
+            </span>
+
+            <span *ngIf="d.gpsLock" class="chip" [class.ok]="d.gpsOk">
+              <span class="dot"></span>
+              GPS
+              <span class="state">{{ d.gpsOk ? 'Verified' : 'Required' }}</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- PASSWORD -->
+        <div *ngIf="d.passwordLock && !d.unlocked" class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Password</div>
+              <div class="panel-sub">Enter the password and verify.</div>
+            </div>
+            <div class="panel-status" [class.ok]="d.pwOk">
+              {{ d.pwOk ? 'Verified' : 'Not verified' }}
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Password</span>
+            <input
+              type="password"
+              [(ngModel)]="password"
+              (ngModelChange)="password.set($event)"
+              placeholder="Enter password"
+              autocomplete="current-password"
+            />
+          </label>
+
+          <button
+            class="btn secondary full"
+            type="button"
+            (click)="verifyPassword(d)"
+            [disabled]="d.pwVerifying"
+          >
+            {{ d.pwVerifying ? 'Verifying…' : (d.pwOk ? 'Verified ✅' : 'Verify Password') }}
+          </button>
+        </div>
+
+        <!-- OTC -->
+        <div *ngIf="d.otcLock && !d.unlocked" class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">One-Time Code</div>
+              <div class="panel-sub">Generate a code, then verify it.</div>
+            </div>
+            <div class="panel-status" [class.ok]="d.otcOk">
+              {{ d.otcOk ? 'Verified' : 'Not verified' }}
+            </div>
+          </div>
+
+          <div *ngIf="!d.otcGenerated" class="stack">
+            <p class="hint">
+              Generate a one-time code (sent to your email), then enter it below.
+            </p>
+
+            <button
+              class="btn secondary full"
+              type="button"
+              (click)="generateOtc(d)"
+              [disabled]="d.otcVerifying"
+            >
+              {{ d.otcVerifying ? 'Generating…' : 'Generate One-Time Code' }}
+            </button>
+          </div>
+
+          <div *ngIf="d.otcGenerated" class="stack">
+            <label class="field">
+              <span>Enter 4-digit code</span>
+              <input
+                type="text"
+                inputmode="numeric"
+                maxlength="4"
+                class="otc-input mono"
+                [(ngModel)]="otc"
+                (ngModelChange)="otc.set($event)"
+                placeholder="1234"
+              />
+            </label>
+
+            <button
+              class="btn secondary full"
+              type="button"
+              (click)="verifyOtc(d)"
+              [disabled]="d.otcVerifying"
+            >
+              {{ d.otcVerifying ? 'Verifying…' : (d.otcOk ? 'Verified ✅' : 'Verify Code') }}
+            </button>
+
+            <p class="info-code" *ngIf="d.generatedOtc">
+              <strong>Code sent:</strong> {{ d.generatedOtc }}
+            </p>
+          </div>
+        </div>
+
+        <!-- GPS -->
+        <div *ngIf="d.gpsLock && !d.unlocked" class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">GPS Verification</div>
+              <div class="panel-sub">You must be physically near the drop.</div>
+            </div>
+            <div class="panel-status" [class.ok]="d.gpsOk">
+              {{ d.gpsOk ? 'Verified' : 'Not verified' }}
+            </div>
+          </div>
+
+          <button
+            class="btn secondary full"
+            type="button"
+            (click)="verifyGps(d)"
+            [disabled]="d.gpsVerifying"
+          >
+            {{ d.gpsVerifying ? 'Checking…' : (d.gpsOk ? 'Verified ✅' : 'Verify GPS') }}
+          </button>
+        </div>
+
+        <!-- FINAL DECRYPT -->
+        <div *ngIf="!d.unlocked" class="final">
+          <button
+            class="btn primary full"
+            type="button"
+            (click)="decryptNow(d)"
+            [disabled]="decrypting"
+          >
+            {{ decrypting ? 'Decrypting…' : 'Decrypt Drop' }}
+          </button>
+
+          <p class="error" *ngIf="error">{{ error }}</p>
+        </div>
+
+        <!-- DECRYPTED -->
+        <div *ngIf="d.unlocked" class="panel success">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Decrypted Message</div>
+              <div class="panel-sub">Keep it safe.</div>
+            </div>
+          </div>
+
+          <pre class="message-box">{{ d.decrypted }}</pre>
+
+          <div *ngIf="d.hasFile && d.fileId" class="stack">
+            <button class="btn secondary full" type="button" (click)="downloadFile(d)">
+              Download {{ d.fileName || 'file' }}
+            </button>
+          </div>
+
+          <div class="stack">
+            <button class="btn danger full" type="button" (click)="deleteDrop(d)">
+              Delete Drop
+            </button>
+          </div>
+        </div>
+
+      </ng-container>
+    </div>
+
+    <div class="drop-modal-footer">
+      <button class="btn ghost" type="button" (click)="close.emit()">Close</button>
+    </div>
+  </div>
 </div>
